@@ -22,7 +22,7 @@ AIM_MD5_STRING = "AOL Instant Messenger (SM)"
 #---------------------------------
 #   Channels
 CH_NEW_CONNECTION = 0x01
-CH_FNAC = 0x02
+CH_SNAC = 0x02
 CH_ERROR = 0x03
 CH_LOGOUT = 0x04
 
@@ -50,7 +50,22 @@ class Connection(object):
         self.osequence = None
         self.accepted = -1
 
-class Fnac(object):
+class Tlv_c(object):
+    def __init__(self, id, value):
+        self.id = id
+        self.value = str(value)
+    def make_tlv_c(self):
+        l = len(self.value)
+        fmt = '!HH %ds' % l
+        return struct.pack(fmt, self.id, l, self.value)
+    
+def make_tlv(list_):
+    slist = [x.make_tlv_c() for x in list_]
+    text = "".join(slist)
+    return text
+        
+
+class Snac(object):
     def __init__(self, family, subtype, flags=0, id=0, data=None):
         self.family = family
         self.subtype = subtype
@@ -59,10 +74,14 @@ class Fnac(object):
         self.data = data
     def parse_hdr(self, string):
         return (ord(string[0]) << 8) + ord(string[1]), (ord(string[2]) << 8) + ord(string[3])
-    def make_fnac(self):
+    def make_snac(self):
         l = len(self.data)
         fmt = '!HHHIH %ds' % l
         return struct.pack(fmt, self.family, self.subtype, self.flags, self.id, l, self.data)
+    def make_snac_tlv(self):
+        l = len(self.data)
+        fmt = '!HHHI %ds' % l
+        return struct.pack(fmt, self.family, self.subtype, self.flags, self.id, self.data)
 
 def parse_tlv(str_):
     tlvs = {}
@@ -77,23 +96,23 @@ def parse_tlv(str_):
     return tlvs    
     
         
-def parse_fnac(str_, fileno):
+def parse_snac(str_, fileno):
     global challenge
-    fn_family = (ord(str_[0]) << 8) + ord(str_[1])
-    fn_sub = (ord(str_[2]) << 8) + ord(str_[3])
-    if fn_family == 0x17:
-        if fn_sub == 0x06:
+    sn_family = (ord(str_[0]) << 8) + ord(str_[1])
+    sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
+    if sn_family == 0x17:
+        if sn_sub == 0x06:
             challenge = str(random.randint(1000000000, 9999999999))
-            fn = Fnac(0x17, 0x07, 0, 0, challenge)
-            fl = Flap(0x02, connections[fileno].osequence, fn.make_fnac())
+            sn = Snac(0x17, 0x07, 0, 0, challenge)
+            fl = Flap(CH_SNAC, connections[fileno].osequence, sn.make_snac())
             connections[fileno].connection.send(fl.make_flap())
             connections[fileno].osequence = connections[fileno].osequence + 1 
-            print "Challenge:", challenge
-        if fn_sub == 0x02:
+#            print "Challenge:", challenge
+        if sn_sub == 0x02:
             m = hashlib.md5()
             m.update(challenge)
-            a = parse_tlv(str_)
-            if a.has_key(0x4c):
+            tlvc = parse_tlv(str_)
+            if tlvc.has_key(0x4c):
                 m2 = hashlib.md5()
                 m2.update("12345")
                 m.update(m2.digest())
@@ -101,8 +120,15 @@ def parse_fnac(str_, fileno):
                 m.update("12345")
             m.update(AIM_MD5_STRING)
             
-            if a[0x25] == m.digest():
+            if tlvc[0x25] == m.digest():
                 print "Auth - OK"
+                tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, "10000"), Tlv_c(0x05, "127.0.0.1:5190"), Tlv_c(0x06, "AAAAAAA")]
+                #tl = [Tlv_c(0x8e,0)]
+                a = make_tlv(tl)
+                sn = Snac(0x17, 0x03, 0, 0, a)
+                fl = Flap(CH_SNAC, connections[fileno].osequence, sn.make_snac_tlv())
+                connections[fileno].connection.send(fl.make_flap_close())
+                connections[fileno].osequence = connections[fileno].osequence + 2
             else:
                 print "Auth - Fail"
 
@@ -127,6 +153,8 @@ class Flap(object):
         l = len(self.data)
         fmt = '!BBHH %ds' % l
         return struct.pack(fmt, 0x2a, self.channel, self.sequence, l, self.data)
+    def make_flap_close(self):
+        return self.make_flap() + struct.pack('!BBHH', 0x2a, CH_LOGOUT, self.sequence + 1, 0)
     
 
 class Flap_processor(Thread):
@@ -151,6 +179,7 @@ def main():
         while True:
             events = epoll.poll(1)
             for fileno, event in events:
+                print len(connections)
                 if fileno == serversocket.fileno():
                     connection, address = serversocket.accept()
                     connection.setblocking(0)
@@ -166,6 +195,7 @@ def main():
                     conn = connections[fileno].connection.recv(FLAP_HRD_SIZE)
                     if not conn:
                         epoll.modify(fileno, 0)
+                        connections[fileno].connection.shutdown(socket.SHUT_RDWR)
                     else:
                         a = fl.parse_hdr(conn)
                         data = connections[fileno].connection.recv(a)
@@ -176,24 +206,18 @@ def main():
                             else:
                                 epoll.modify(fileno, 0)
                                 connections[fileno].connection.shutdown(socket.SHUT_RDWR)
-                        elif fl.channel == CH_FNAC:
-                            #fn = Fnac()
-                            #fn_family, fn_sub = fn.parse_hdr(data)
-                            #print fn_family, fn_sub
-                            parse_fnac(data, fileno)
+                        elif fl.channel == CH_SNAC:
+                            parse_snac(data, fileno)
                             
                 elif event & select.EPOLLOUT:
-                    pass
-#                    byteswritten = connections[fileno].send(responses[fileno])
-#                    responses[fileno] = responses[fileno][byteswritten:]
-#                    if len(responses[fileno]) == 0:
-#                        connections[fileno].setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, 0)
-#                        epoll.modify(fileno, 0)
-#                        connections[fileno].shutdown(socket.SHUT_RDWR)
+                    print "Ready to out: ", fileno
                 elif event & select.EPOLLHUP:
+                    print "Close coonection: ", fileno
                     epoll.unregister(fileno)
                     connections[fileno].connection.close()
                     del connections[fileno]
+                elif event & select.EPOLLERR:
+                    print "Error coonection: ", fileno
     finally:
         epoll.unregister(serversocket.fileno())
         epoll.close()
