@@ -9,6 +9,7 @@ import struct
 import Queue
 import random
 import hashlib
+import MySQLdb
 
 #from random import randrange
 from threading import Thread
@@ -30,6 +31,8 @@ q = Queue.Queue()
 
 connections = {}
 challenge = ""
+
+db = None
 
 def tohex(str_):
     """
@@ -85,7 +88,7 @@ class Snac(object):
 
 def parse_tlv(str_):
     tlvs = {}
-    data = str_[10:]
+    data = str_
     while(len(data)):
         tlv_id = (ord(data[0]) << 8) + ord(data[1])
         tlv_len = (ord(data[2]) << 8) + ord(data[3])
@@ -95,14 +98,20 @@ def parse_tlv(str_):
         data = data[tlv_end:]
     return tlvs    
     
+def generate_cookie():
+    slist = map(lambda x: chr(random.randint(0, 0xFF)), xrange(256))
+    return "".join(slist)
         
 def parse_snac(str_, fileno):
-    global challenge
+    global challenge, db
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     if sn_family == 0x17:
         if sn_sub == 0x06:
             challenge = str(random.randint(1000000000, 9999999999))
+            c = db.cursor()
+            tlvc = parse_tlv(str_[10:])
+            c.execute("""UPDATE Users SET challenge = %s WHERE uin = %s""", (challenge, tlvc[0x01]))
             sn = Snac(0x17, 0x07, 0, 0, challenge)
             fl = Flap(CH_SNAC, connections[fileno].osequence, sn.make_snac())
             connections[fileno].connection.send(fl.make_flap())
@@ -110,20 +119,25 @@ def parse_snac(str_, fileno):
 #            print "Challenge:", challenge
         if sn_sub == 0x02:
             m = hashlib.md5()
+            tlvc = parse_tlv(str_[10:])
+            c = db.cursor()
+            c.execute("""SELECT challenge,password FROM Users WHERE uin = %s""", (tlvc[0x01]))
+            challenge, password = c.fetchone()
             m.update(challenge)
-            tlvc = parse_tlv(str_)
             if tlvc.has_key(0x4c):
                 m2 = hashlib.md5()
-                m2.update("12345")
+                m2.update(password)
                 m.update(m2.digest())
             else:
-                m.update("12345")
+                m.update(password)
             m.update(AIM_MD5_STRING)
             
             if tlvc[0x25] == m.digest():
                 print "Auth - OK"
-                tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, "10000"), Tlv_c(0x05, "127.0.0.1:5190"), Tlv_c(0x06, "AAAAAAA")]
-                #tl = [Tlv_c(0x8e,0)]
+                cookie = generate_cookie()
+                c.execute("""DELETE FROM User_cookies WHERE Users_uin = %s""", (tlvc[0x01]))
+                c.execute("""INSERT INTO User_cookies (`Users_uin`,`cookie`) VALUES (%s,%s)""", (tlvc[0x01],cookie))
+                tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, "127.0.0.1:5190"), Tlv_c(0x06, cookie)]
                 a = make_tlv(tl)
                 sn = Snac(0x17, 0x03, 0, 0, a)
                 fl = Flap(CH_SNAC, connections[fileno].osequence, sn.make_snac_tlv())
@@ -164,6 +178,8 @@ class Flap_processor(Thread):
         pass
 
 def main():
+    global db
+    db = MySQLdb.connect(unix_socket="/var/run/mysql/mysql.sock", user="pyserverd", passwd="pyserverd", db="pyserverd",use_unicode=False)
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serversocket.bind((serv_addr, serv_port))
@@ -179,7 +195,7 @@ def main():
         while True:
             events = epoll.poll(1)
             for fileno, event in events:
-                print len(connections)
+                #print len(connections)
                 if fileno == serversocket.fileno():
                     connection, address = serversocket.accept()
                     connection.setblocking(0)
@@ -203,12 +219,17 @@ def main():
                             if not connections[fileno].accepted:
                                 connections[fileno].accepted += 1
                                 connections[fileno].isequence = fl.sequence + 1
-                            else:
-                                epoll.modify(fileno, 0)
-                                connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+#                            else:
+#                                epoll.modify(fileno, 0)
+#                                connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                            print "New_connect tail:",tohex(data[4:])
+                            tlvc = parse_tlv(data[4:])
+                            if tlvc.has_key(0x01):
+                                c = db.cursor()
+                                #cookie = c.execute("""SELECT cookie FROM Users WHERE uin = %s""", (tlvc[0x01]))
+                                
                         elif fl.channel == CH_SNAC:
                             parse_snac(data, fileno)
-                            
                 elif event & select.EPOLLOUT:
                     print "Ready to out: ", fileno
                 elif event & select.EPOLLHUP:
