@@ -14,19 +14,8 @@ import MySQLdb
 #from random import randrange
 from threading import Thread
 
-serv_addr = '0.0.0.0'
-serv_port = 5190
-
-FLAP_START = 0x2A
-FLAP_HRD_SIZE = 6
-AIM_MD5_STRING = "AOL Instant Messenger (SM)"
-
-#---------------------------------
-#   Channels
-CH_NEW_CONNECTION = 0x01
-CH_SNAC = 0x02
-CH_ERROR = 0x03
-CH_LOGOUT = 0x04
+from defines import *
+from config import *
 
 q = Queue.Queue()
 
@@ -137,7 +126,7 @@ def parse_snac(str_, fileno):
                 print "Auth - OK"
                 cookie = generate_cookie()
                 c.execute("""REPLACE INTO users_cookies SET users_uin = %s, cookie = %s""",(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie)))
-                tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, "127.0.0.1:5190"), Tlv_c(0x06, cookie)]
+                tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, serv_addr+":"+str(serv_port)), Tlv_c(0x06, cookie)]
                 a = make_tlv(tl)
                 sn = Snac(0x17, 0x03, 0, 0, a)
                 fl = Flap(CH_SNAC, connections[fileno].osequence, sn.make_snac_tlv())
@@ -179,7 +168,7 @@ class Flap_processor(Thread):
 
 def main():
     global db
-    db = MySQLdb.connect(unix_socket="/var/run/mysql/mysql.sock", user="pyserverd", passwd="pyserverd", db="pyserverd", use_unicode=True, charset='utf8')
+    db = MySQLdb.connect(unix_socket=db_socket, user=db_user, passwd=db_passwd, db=db_name, use_unicode=db_use_unicode, charset=db_charset)
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serversocket.bind((serv_addr, serv_port))
