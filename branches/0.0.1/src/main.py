@@ -17,6 +17,7 @@ from threading import Thread
 serv_addr = '0.0.0.0'
 serv_port = 5190
 
+FLAP_START = 0x2A
 FLAP_HRD_SIZE = 6
 AIM_MD5_STRING = "AOL Instant Messenger (SM)"
 
@@ -111,7 +112,7 @@ def parse_snac(str_, fileno):
             challenge = str(random.randint(1000000000, 9999999999))
             c = db.cursor()
             tlvc = parse_tlv(str_[10:])
-            c.execute("""UPDATE Users SET challenge = %s WHERE uin = %s""", (challenge, tlvc[0x01]))
+            c.execute("""UPDATE users SET challenge = %s WHERE uin = %s""", (challenge, tlvc[0x01]))
             sn = Snac(0x17, 0x07, 0, 0, challenge)
             fl = Flap(CH_SNAC, connections[fileno].osequence, sn.make_snac())
             connections[fileno].connection.send(fl.make_flap())
@@ -121,7 +122,7 @@ def parse_snac(str_, fileno):
             m = hashlib.md5()
             tlvc = parse_tlv(str_[10:])
             c = db.cursor()
-            c.execute("""SELECT challenge,password FROM Users WHERE uin = %s""", (tlvc[0x01]))
+            c.execute("""SELECT challenge,password FROM users WHERE uin = %s""", (tlvc[0x01]))
             challenge, password = c.fetchone()
             m.update(challenge)
             if tlvc.has_key(0x4c):
@@ -135,8 +136,7 @@ def parse_snac(str_, fileno):
             if tlvc[0x25] == m.digest():
                 print "Auth - OK"
                 cookie = generate_cookie()
-                c.execute("""DELETE FROM User_cookies WHERE Users_uin = %s""", (tlvc[0x01]))
-                c.execute("""INSERT INTO User_cookies (`Users_uin`,`cookie`) VALUES (%s,%s)""", (tlvc[0x01],cookie))
+                c.execute("""REPLACE INTO users_cookies SET users_uin = %s, cookie = %s""",(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie)))
                 tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, "127.0.0.1:5190"), Tlv_c(0x06, cookie)]
                 a = make_tlv(tl)
                 sn = Snac(0x17, 0x03, 0, 0, a)
@@ -152,7 +152,7 @@ class Flap(object):
         self.data = data
         self.sequence = sequence
     def parse_hdr(self, string):
-        if ord(string[0]) != 0x2A:
+        if ord(string[0]) != FLAP_START:
             return
         self.channel = ord(string[1])
         self.sequence = (ord(string[2]) << 8) + ord(string[3])
@@ -166,9 +166,9 @@ class Flap(object):
     def make_flap(self):
         l = len(self.data)
         fmt = '!BBHH %ds' % l
-        return struct.pack(fmt, 0x2a, self.channel, self.sequence, l, self.data)
+        return struct.pack(fmt, FLAP_START, self.channel, self.sequence, l, self.data)
     def make_flap_close(self):
-        return self.make_flap() + struct.pack('!BBHH', 0x2a, CH_LOGOUT, self.sequence + 1, 0)
+        return self.make_flap() + struct.pack('!BBHH', FLAP_START, CH_LOGOUT, self.sequence + 1, 0)
     
 
 class Flap_processor(Thread):
@@ -179,7 +179,7 @@ class Flap_processor(Thread):
 
 def main():
     global db
-    db = MySQLdb.connect(unix_socket="/var/run/mysql/mysql.sock", user="pyserverd", passwd="pyserverd", db="pyserverd",use_unicode=False)
+    db = MySQLdb.connect(unix_socket="/var/run/mysql/mysql.sock", user="pyserverd", passwd="pyserverd", db="pyserverd", use_unicode=True, charset='utf8')
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serversocket.bind((serv_addr, serv_port))
@@ -222,7 +222,7 @@ def main():
 #                            else:
 #                                epoll.modify(fileno, 0)
 #                                connections[fileno].connection.shutdown(socket.SHUT_RDWR)
-                            print "New_connect tail:",tohex(data[4:])
+                            print "New_connect tail:", tohex(data[4:])
                             tlvc = parse_tlv(data[4:])
                             if tlvc.has_key(0x01):
                                 c = db.cursor()
