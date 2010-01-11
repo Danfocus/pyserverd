@@ -2,7 +2,7 @@
 --
 -- Host: localhost    Database: pyserverd
 -- ------------------------------------------------------
--- Server version	5.1.36-log
+-- Server version	5.1.36
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -37,7 +37,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1001,'12345',NULL,'3353285996');
+INSERT INTO `users` VALUES (1001,'12345',NULL,'3254360890'),(1000,'12345',NULL,'1272109068');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -52,7 +52,7 @@ CREATE TABLE `users_cookies` (
   `users_uin` int(10) unsigned NOT NULL,
   `cookie` varbinary(256) NOT NULL,
   `cdate` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`users_uin`,`cookie`),
+  PRIMARY KEY (`users_uin`),
   KEY `fk_users_cookies_users` (`users_uin`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -75,4 +75,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2010-01-11 18:35:08
+-- Dump completed on 2010-01-12  3:20:29

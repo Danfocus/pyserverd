@@ -15,9 +15,11 @@ class db_mysql(object):
     
     def db_set_challenge(self,uin,challenge):
         self.c.execute("""UPDATE users SET challenge = %s WHERE uin = %s""", (challenge, uin))
+        return self.c.rowcount
         
     def db_set_cookie(self,uin,cookie):
         self.c.execute("""REPLACE INTO users_cookies SET users_uin = %s, cookie = %s""",(uin, cookie))
+        
         pass
     
     def db_select_users_where(self,sel_,whr_):
