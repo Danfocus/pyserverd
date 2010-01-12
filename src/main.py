@@ -40,6 +40,7 @@ class Connection(object):
         self.isequence = None
         self.osequence = None
         self.accepted = -1
+        self.user = None
         self.flap = None
 
 class Tlv_c(object):
@@ -62,7 +63,7 @@ def make_fam_list():
     return text
 
 def make_fam_vers_list():
-    slist = [struct.pack('!HH', x,y) for x,y in SUPPORTED_SERVICES]
+    slist = [struct.pack('!HH', x, y) for x, y in SUPPORTED_SERVICES.iteritems()]
     text = "".join(slist)
     return text
 
@@ -70,6 +71,29 @@ def make_well_known_url():
     slist = [struct.pack("!HH %ds" % len(y), x, len(y), y) for x, y in WELL_KNOWN_URL.iteritems()]
     text = "".join(slist)
     return text
+
+def make_motd():
+    return struct.pack("!HHHHHHH" , 5, 2, 2, 30, 3, 2, 1200)
+
+def make_rate_info():
+    slist = [struct.pack("!HIIIIIIIIB", x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9]) for x in RATE_CLASSES]
+    text = "".join(slist)
+    return struct.pack("!H", len(RATE_CLASSES)) + text
+
+def make_rate_gr(tpl):
+    slist = [struct.pack("!HH" , x[0], x[1]) for x in tpl]
+    text = "".join(slist)
+    return text
+
+def make_rate_groups():
+    slist = [struct.pack("!HH %ds" % len(make_rate_gr(y)), x, len(y), make_rate_gr(y)) for x, y in RATE_GROUPS.iteritems()]
+    text = "".join(slist)
+    return text
+
+def make_self_info(uin):
+    pass
+
+
 
 class Snac(object):
     def __init__(self, family, subtype, flags=0, id=0, data=None):
@@ -124,7 +148,7 @@ def parse_snac(str_, fileno):
             sn = Snac(SN_TYP_REGISTRATION, SN_IES_AUTHxKEY, 0, 0, challenge)
             fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac())
             connections[fileno].flap = fl.make_flap()
-        if sn_sub == SN_IES_AUTHxLOGIN:
+        elif sn_sub == SN_IES_AUTHxLOGIN:
             m = hashlib.md5()
             tlvc = parse_tlv(str_[10:])
             challenge, password = db.db_select_users_where("challenge,password", tlvc[0x01])
@@ -150,14 +174,23 @@ def parse_snac(str_, fileno):
             else:
                 print "Auth - Fail"
                 
-    if sn_family == SN_TYP_GENERIC:
+    elif sn_family == SN_TYP_GENERIC:
         if sn_sub == SN_GEN_REQUESTxVERS:
             sn = Snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
             fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-            #sn = Snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_fam_vers_list())
-            connections[fileno].flap = fl.make_flap_close()
-                                    
-                
+            connections[fileno].osequence += 1
+            sn = Snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_motd())
+            fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+            connections[fileno].flap = fl.add_make_flap(fl2)
+        elif sn_sub == SN_GEN_REQUESTxRATE:
+            sn = Snac(SN_TYP_GENERIC, SN_GEN_RATExRESPONSE, 0, 0, make_rate_info() + make_rate_groups())
+            fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+            connections[fileno].flap = fl.make_flap()
+        elif sn_sub == SN_GEN_RATExACK:
+            pass
+        elif sn_sub == SN_GEN_INFOxREQUEST:
+            sn = Snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connections[fileno].uin))
+            
 
 class Flap(object):
     def __init__(self, channel=None, sequence=None, data=None):
@@ -229,7 +262,7 @@ def main():
                     conn = connections[fileno].connection.recv(FLAP_HRD_SIZE)
                     if not conn:
                         epoll.modify(fileno, 0)
-                        connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                        #connections[fileno].connection.shutdown(socket.SHUT_RDWR)
                     else:
                         a = fl.parse_hdr(conn)
                         if a:
@@ -248,6 +281,7 @@ def main():
                                 a = db.db_get_cookie(tlvc[FL_SIGNON_COOKIE])
                                 print str(a)
                                 if a:
+                                    connections[fileno].uin = a
                                     sn = Snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
                                     fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
                                     connections[fileno].osequence += 1
@@ -263,10 +297,11 @@ def main():
                             connections[fileno].connection.shutdown(socket.SHUT_RDWR)
                 elif event & select.EPOLLOUT:
                     print "Ready to out: ", fileno
-                    if connections[fileno].connection.send(connections[fileno].flap):
-                        connections[fileno].osequence += 1
-                        connections[fileno].flap = None
-                        epoll.modify(fileno, select.EPOLLIN)
+                    if connections[fileno].flap:
+                        if connections[fileno].connection.send(connections[fileno].flap):
+                            connections[fileno].osequence += 1
+                            connections[fileno].flap = None
+                    epoll.modify(fileno, select.EPOLLIN)
                 elif event & select.EPOLLHUP:
                     print "Close coonection: ", fileno
                     epoll.unregister(fileno)
