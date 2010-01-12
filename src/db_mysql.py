@@ -5,9 +5,12 @@ Created on 11.01.2010
 '''
 
 import MySQLdb
-from config import *
+from config import * #@UnusedWildImport
 
 class db_mysql(object):
+    '''
+    classdocs
+    '''
 
     def __init__(self):
         db = MySQLdb.connect(unix_socket=db_socket, user=db_user, passwd=db_passwd, db=db_name, use_unicode=db_use_unicode, charset=db_charset)

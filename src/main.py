@@ -9,11 +9,12 @@ import struct
 import Queue
 import random
 import hashlib
+import time
 
 from threading import Thread
 
-from defines import *
-from config import *
+from defines import * #@UnusedWildImport
+from config import * #@UnusedWildImport
 import db_mysql
 
 q = Queue.Queue()
@@ -166,7 +167,7 @@ def parse_snac(str_, fileno):
                 cookie = generate_cookie()
                 db.db_set_cookie(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie))
                 #c.execute("""REPLACE INTO users_cookies SET users_uin = %s, cookie = %s""",(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie)))
-                tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, serv_addr + ":" + str(serv_port)), Tlv_c(0x06, cookie)]
+                tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, bos_addr), Tlv_c(0x06, cookie)]
                 a = make_tlv(tl)
                 sn = Snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, a)
                 fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
@@ -251,10 +252,12 @@ def main():
                     connections[connection.fileno()] = Connection(connection, address)
                     seq = random.randrange(0xFFFF)
                     fl = Flap(FLAP_FRAME_SIGNON, seq, struct.pack('!i', FLAP_VERSION))
-                    #if connection.send(fl.make_flap()):
                     connections[connection.fileno()].osequence = seq
                     connections[connection.fileno()].accepted += 1
                         
+                    #for stupid qip2005
+                    time.sleep(1)
+                    
                     connections[connection.fileno()].flap = fl.make_flap()
                 elif event & select.EPOLLIN:
                     print "Ready to in: ", fileno
@@ -262,7 +265,10 @@ def main():
                     conn = connections[fileno].connection.recv(FLAP_HRD_SIZE)
                     if not conn:
                         epoll.modify(fileno, 0)
-                        #connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                        try:
+                            connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                        except:
+                            pass
                     else:
                         a = fl.parse_hdr(conn)
                         if a:
