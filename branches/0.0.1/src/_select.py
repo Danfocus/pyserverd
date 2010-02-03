@@ -7,7 +7,6 @@ Created on 03.02.2010
 from select import select
 
 class _select(object):
-    """A simple, select()-based IOLoop implementation for non-Linux systems"""
     
     _EPOLLIN = 0x001
     _EPOLLPRI = 0x002
