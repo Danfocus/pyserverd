@@ -3,6 +3,7 @@ Created on 31.12.2009
 
 @author: danfocus
 '''
+from _select import _select
 import socket
 import select
 import struct
@@ -236,19 +237,17 @@ def main():
     serversocket.setblocking(0)
     serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     
-    epoll = select.epoll()
-    epoll.register(serversocket.fileno(), select.EPOLLIN)
+    _poll.register(serversocket.fileno(), select.EPOLLIN)
     
     try:
-#        connections = {}; requests = {}; responses = {}; addresses = {}
         while True:
-            events = epoll.poll(1)
+            events = _poll.poll(1)
             for fileno, event in events:
                 print len(connections)
                 if fileno == serversocket.fileno():
                     connection, address = serversocket.accept()
                     connection.setblocking(0)
-                    epoll.register(connection.fileno(), select.EPOLLOUT)
+                    _poll.register(connection.fileno(), select.EPOLLOUT)
                     connections[connection.fileno()] = Connection(connection, address)
                     seq = random.randrange(0xFFFF)
                     fl = Flap(FLAP_FRAME_SIGNON, seq, struct.pack('!i', FLAP_VERSION))
@@ -264,7 +263,7 @@ def main():
                     fl = Flap()
                     conn = connections[fileno].connection.recv(FLAP_HRD_SIZE)
                     if not conn:
-                        epoll.modify(fileno, 0)
+                        _poll.modify(fileno, 0)
                         try:
                             connections[fileno].connection.shutdown(socket.SHUT_RDWR)
                         except:
@@ -294,12 +293,12 @@ def main():
                                     sn = Snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
                                     fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
                                     connections[fileno].flap = fl.add_make_flap(fl2)
-                                    epoll.modify(fileno, select.EPOLLOUT)
+                                    _poll.modify(fileno, select.EPOLLOUT)
                         elif fl.channel == FLAP_FRAME_DATA:
                             parse_snac(data, fileno)
-                            epoll.modify(fileno, select.EPOLLOUT)
+                            _poll.modify(fileno, select.EPOLLOUT)
                         elif fl.channel == FLAP_FRAME_SIGNOFF:
-                            epoll.modify(fileno, 0)
+                            _poll.modify(fileno, 0)
                             connections[fileno].connection.shutdown(socket.SHUT_RDWR)
                 elif event & select.EPOLLOUT:
                     print "Ready to out: ", fileno
@@ -307,20 +306,31 @@ def main():
                         if connections[fileno].connection.send(connections[fileno].flap):
                             connections[fileno].osequence += 1
                             connections[fileno].flap = None
-                    epoll.modify(fileno, select.EPOLLIN)
+                    _poll.modify(fileno, select.EPOLLIN)
                 elif event & select.EPOLLHUP:
                     print "Close coonection: ", fileno
-                    epoll.unregister(fileno)
+                    _poll.unregister(fileno)
                     connections[fileno].connection.close()
                     del connections[fileno]
                 elif event & select.EPOLLERR:
                     print "Error coonection: ", fileno
     finally:
-        epoll.unregister(serversocket.fileno())
-        epoll.close()
+        _poll.unregister(serversocket.fileno())
+        _poll.close()
         serversocket.close()
     
 
 if __name__ == '__main__':
+    if hasattr(select, "epoll"):
+        # Python 2.6+ on Linux
+        _poll = select.epoll
+    elif hasattr(select, "kqueue"):
+        # BSD
+        import _kqueue
+        _poll = _kqueue()
+    else:
+        # All other systems
+        _poll = _select()
+
     main()
 
