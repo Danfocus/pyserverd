@@ -23,6 +23,15 @@ q = Queue.Queue()
 
 connections = {}
 
+_EPOLLIN = 0x001
+_EPOLLPRI = 0x002
+_EPOLLOUT = 0x004
+_EPOLLERR = 0x008
+_EPOLLHUP = 0x010
+_EPOLLRDHUP = 0x2000
+_EPOLLONESHOT = (1 << 30)
+_EPOLLET = (1 << 31)
+
 cnf = ConfigParser.ConfigParser()
 cnf.read('pyserverd.conf')
 
@@ -244,7 +253,7 @@ def main():
     serversocket.setblocking(0)
     serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     
-    _poll.register(serversocket.fileno(), _poll.EPOLLIN)
+    _poll.register(serversocket.fileno(), _EPOLLIN)
     
     try:
         while True:
@@ -254,7 +263,7 @@ def main():
                 if fileno == serversocket.fileno():
                     connection, address = serversocket.accept()
                     connection.setblocking(0)
-                    _poll.register(connection.fileno(), _poll.EPOLLOUT)
+                    _poll.register(connection.fileno(), _EPOLLOUT)
                     connections[connection.fileno()] = Connection(connection, address)
                     seq = random.randrange(0xFFFF)
                     fl = Flap(FLAP_FRAME_SIGNON, seq, struct.pack('!i', FLAP_VERSION))
@@ -265,7 +274,7 @@ def main():
                     time.sleep(1)
                     
                     connections[connection.fileno()].flap = fl.make_flap()
-                elif event & _poll.EPOLLIN:
+                elif event & _EPOLLIN:
                     print "Ready to in: ", fileno
                     fl = Flap()
                     conn = connections[fileno].connection.recv(FLAP_HRD_SIZE)
@@ -286,7 +295,7 @@ def main():
 #                            else:
 #                                epoll.modify(fileno, 0)
 #                                connections[fileno].connection.shutdown(socket.SHUT_RDWR)
-                            print "New_connect tail:", tohex(data[4:])
+                            #print "New_connect tail:", tohex(data[4:])
                             tlvc = parse_tlv(data[4:])
                             if tlvc.has_key(FL_SIGNON_COOKIE):
                                 print "Second connect"
@@ -300,26 +309,26 @@ def main():
                                     sn = Snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
                                     fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
                                     connections[fileno].flap = fl.add_make_flap(fl2)
-                                    _poll.modify(fileno, _poll.EPOLLOUT)
+                                    _poll.modify(fileno, _EPOLLOUT)
                         elif fl.channel == FLAP_FRAME_DATA:
                             parse_snac(data, fileno)
-                            _poll.modify(fileno, _poll.EPOLLOUT)
+                            _poll.modify(fileno, _EPOLLOUT)
                         elif fl.channel == FLAP_FRAME_SIGNOFF:
                             _poll.modify(fileno, 0)
                             connections[fileno].connection.shutdown(socket.SHUT_RDWR)
-                elif event & _poll.EPOLLOUT:
+                elif event & _EPOLLOUT:
                     print "Ready to out: ", fileno
                     if connections[fileno].flap:
                         if connections[fileno].connection.send(connections[fileno].flap):
                             connections[fileno].osequence += 1
                             connections[fileno].flap = None
-                    _poll.modify(fileno, _poll.EPOLLIN)
-                elif event & _poll.EPOLLHUP:
+                    _poll.modify(fileno, _EPOLLIN)
+                elif event & _EPOLLHUP:
                     print "Close coonection: ", fileno
                     _poll.unregister(fileno)
                     connections[fileno].connection.close()
                     del connections[fileno]
-                elif event & _poll.EPOLLERR:
+                elif event & _EPOLLERR:
                     print "Error coonection: ", fileno
     finally:
         _poll.unregister(serversocket.fileno())
