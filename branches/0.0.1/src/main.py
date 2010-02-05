@@ -17,7 +17,7 @@ from threading import Thread
 
 from defines import * #@UnusedWildImport
 
-import db_mysql
+from db_mysql import db_mysql
 
 q = Queue.Queue()
 
@@ -26,7 +26,7 @@ connections = {}
 cnf = ConfigParser.ConfigParser()
 cnf.read('pyserverd.conf')
 
-db = db_mysql.db_mysql(cnf.get('db', 'db_host'), cnf.getint('db', 'db_port'),
+db = db_mysql(cnf.get('db', 'db_host'), cnf.getint('db', 'db_port'),
                        cnf.get('db', 'db_user'), cnf.get('db', 'db_passwd'),
                        cnf.get('db', 'db_name'), cnf.getboolean('db', 'db_use_unicode'),
                        cnf.get('db', 'db_charset'))
@@ -252,8 +252,8 @@ def main():
                     connections[connection.fileno()].osequence = seq
                     #connections[connection.fileno()].accepted = 0
                         
-                    #for stupid qip2005
-                    time.sleep(1)
+                    #for stupid clients like qip2005
+                    time.sleep(cnf.getint('general', 'new_connection_delay'))
                     
                     connections[connection.fileno()].flap.put((fl.make_flap(), 1))
                     _poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
