@@ -3,7 +3,7 @@ Created on 31.12.2009
 
 @author: danfocus
 '''
-from _select import _select
+
 import socket
 import select
 import struct
@@ -23,21 +23,12 @@ q = Queue.Queue()
 
 connections = {}
 
-_EPOLLIN = 0x001
-_EPOLLPRI = 0x002
-_EPOLLOUT = 0x004
-_EPOLLERR = 0x008
-_EPOLLHUP = 0x010
-_EPOLLRDHUP = 0x2000
-_EPOLLONESHOT = (1 << 30)
-_EPOLLET = (1 << 31)
-
 cnf = ConfigParser.ConfigParser()
 cnf.read('pyserverd.conf')
 
-db = db_mysql.db_mysql(cnf.get('db', 'db_host'), cnf.getint('db', 'db_port'), 
-                       cnf.get('db', 'db_user'), cnf.get('db', 'db_passwd'), 
-                       cnf.get('db', 'db_name'), cnf.getboolean('db', 'db_use_unicode'), 
+db = db_mysql.db_mysql(cnf.get('db', 'db_host'), cnf.getint('db', 'db_port'),
+                       cnf.get('db', 'db_user'), cnf.get('db', 'db_passwd'),
+                       cnf.get('db', 'db_name'), cnf.getboolean('db', 'db_use_unicode'),
                        cnf.get('db', 'db_charset'))
 
 def tohex(str_):
@@ -57,9 +48,9 @@ class Connection(object):
         self.address = address
         self.isequence = None
         self.osequence = None
-        self.accepted = -1
-        self.user = None
-        self.flap = None
+        self.accepted = None
+        self.uin = None
+        self.flap = Queue.Queue()
 
 class Tlv_c(object):
     def __init__(self, id, value):
@@ -160,12 +151,12 @@ def parse_snac(str_, fileno):
                 tl = [Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x04, MISMATCH_PASSWD), Tlv_c(0x08, '\x00\x05')]
                 sn = Snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, make_tlv(tl))
                 fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-                connections[fileno].flap = fl.make_flap_close()
+                connections[fileno].flap.put((fl.make_flap_close(), 1))
                 return
             #c.execute("""UPDATE users SET challenge = %s WHERE uin = %s""", (challenge, tlvc[0x01]))
             sn = Snac(SN_TYP_REGISTRATION, SN_IES_AUTHxKEY, 0, 0, challenge)
             fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac())
-            connections[fileno].flap = fl.make_flap()
+            connections[fileno].flap.put((fl.make_flap(), 1))
         elif sn_sub == SN_IES_AUTHxLOGIN:
             m = hashlib.md5()
             tlvc = parse_tlv(str_[10:])
@@ -188,7 +179,7 @@ def parse_snac(str_, fileno):
                 a = make_tlv(tl)
                 sn = Snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, a)
                 fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-                connections[fileno].flap = fl.make_flap_close()       #connections[fileno].osequence = connections[fileno].osequence + 2
+                connections[fileno].flap.put((fl.make_flap_close(), 1))       #connections[fileno].osequence = connections[fileno].osequence + 2
             else:
                 print "Auth - Fail"
                 
@@ -196,14 +187,13 @@ def parse_snac(str_, fileno):
         if sn_sub == SN_GEN_REQUESTxVERS:
             sn = Snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
             fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-            connections[fileno].osequence += 1
             sn = Snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_motd())
-            fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-            connections[fileno].flap = fl.add_make_flap(fl2)
+            fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence + 1, sn.make_snac_tlv())
+            connections[fileno].flap.put((fl.add_make_flap(fl2), 2))
         elif sn_sub == SN_GEN_REQUESTxRATE:
             sn = Snac(SN_TYP_GENERIC, SN_GEN_RATExRESPONSE, 0, 0, make_rate_info() + make_rate_groups())
             fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-            connections[fileno].flap = fl.make_flap()
+            connections[fileno].flap.put((fl.make_flap(), 1))
         elif sn_sub == SN_GEN_RATExACK:
             pass
         elif sn_sub == SN_GEN_INFOxREQUEST:
@@ -236,14 +226,6 @@ class Flap(object):
     def add_make_flap(self, fl):
         return self.make_flap() + fl.make_flap()
     
-    
-
-class Flap_processor(Thread):
-    def __init__(self):
-        Thread.__init__(self)
-    def run(self):
-        pass
-
 def main():
     
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -253,31 +235,32 @@ def main():
     serversocket.setblocking(0)
     serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     
-    _poll.register(serversocket.fileno(), _EPOLLIN)
+    _poll.register(serversocket.fileno(), _events.EPOLLIN)
     
     try:
         while True:
             events = _poll.poll(1)
             for fileno, event in events:
-                print len(connections)
+                #print len(connections)
                 if fileno == serversocket.fileno():
                     connection, address = serversocket.accept()
                     connection.setblocking(0)
-                    _poll.register(connection.fileno(), _EPOLLOUT)
+                    #_poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
                     connections[connection.fileno()] = Connection(connection, address)
                     seq = random.randrange(0xFFFF)
                     fl = Flap(FLAP_FRAME_SIGNON, seq, struct.pack('!i', FLAP_VERSION))
                     connections[connection.fileno()].osequence = seq
-                    connections[connection.fileno()].accepted += 1
+                    #connections[connection.fileno()].accepted = 0
                         
                     #for stupid qip2005
                     time.sleep(1)
                     
-                    connections[connection.fileno()].flap = fl.make_flap()
-                elif event & _EPOLLIN:
-                    print "Ready to in: ", fileno
+                    connections[connection.fileno()].flap.put((fl.make_flap(), 1))
+                    _poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
+                elif event & _events.EPOLLIN:
+                    #print "Ready to in: ", fileno
                     fl = Flap()
-                    conn = connections[fileno].connection.recv(FLAP_HRD_SIZE)
+                    conn = connections[fileno].connection.recv(FLAP_HDR_SIZE)
                     if not conn:
                         _poll.modify(fileno, 0)
                         try:
@@ -287,66 +270,103 @@ def main():
                     else:
                         a = fl.parse_hdr(conn)
                         if a:
-                            data = connections[fileno].connection.recv(a)
-                        if fl.channel == FLAP_FRAME_SIGNON:
-                            if not connections[fileno].accepted:
-                                connections[fileno].accepted += 1
-                                connections[fileno].isequence = fl.sequence + 1
-#                            else:
-#                                epoll.modify(fileno, 0)
-#                                connections[fileno].connection.shutdown(socket.SHUT_RDWR)
-                            #print "New_connect tail:", tohex(data[4:])
-                            tlvc = parse_tlv(data[4:])
-                            if tlvc.has_key(FL_SIGNON_COOKIE):
-                                print "Second connect"
-                                a = db.db_get_cookie(tlvc[FL_SIGNON_COOKIE], cnf.getint('general', 'cookie_lifetime'))
-                                print str(a)
-                                if a:
-                                    connections[fileno].uin = a
-                                    sn = Snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
-                                    fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-                                    connections[fileno].osequence += 1
-                                    sn = Snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
-                                    fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-                                    connections[fileno].flap = fl.add_make_flap(fl2)
-                                    _poll.modify(fileno, _EPOLLOUT)
-                        elif fl.channel == FLAP_FRAME_DATA:
-                            parse_snac(data, fileno)
-                            _poll.modify(fileno, _EPOLLOUT)
-                        elif fl.channel == FLAP_FRAME_SIGNOFF:
-                            _poll.modify(fileno, 0)
-                            connections[fileno].connection.shutdown(socket.SHUT_RDWR)
-                elif event & _EPOLLOUT:
-                    print "Ready to out: ", fileno
-                    if connections[fileno].flap:
-                        if connections[fileno].connection.send(connections[fileno].flap):
-                            connections[fileno].osequence += 1
-                            connections[fileno].flap = None
-                    _poll.modify(fileno, _EPOLLIN)
-                elif event & _EPOLLHUP:
-                    print "Close coonection: ", fileno
+                            if a <= FLAP_MAX_SIZE:
+                                if (not connections[fileno].isequence) or connections[fileno].isequence == fl.sequence:
+                                    if not connections[fileno].isequence:
+                                        connections[fileno].isequence = fl.sequence + 1
+                                    else:
+                                        connections[fileno].isequence += 1
+                                    fl.data = connections[fileno].connection.recv(a)
+                                    q.put((fl, fileno))
+                                else:
+                                    _poll.modify(fileno, 0)
+                                    try:
+                                        connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                                    except:
+                                        pass
+                            else:
+                                _poll.modify(fileno, 0)
+                                try:
+                                    connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                                except:
+                                    pass
+                elif event & _events.EPOLLOUT:
+                    #print "Ready to out: ", fileno
+                    while not connections[fileno].flap.empty():
+                        fl, oseq = connections[fileno].flap.get()
+                        if connections[fileno].connection.send(fl):
+                            connections[fileno].osequence += oseq
+                    _poll.modify(fileno, _events.EPOLLIN)
+                elif event & _events.EPOLLHUP:
+                    #print "Close coonection: ", fileno
                     _poll.unregister(fileno)
                     connections[fileno].connection.close()
                     del connections[fileno]
-                elif event & _EPOLLERR:
+                elif event & _events.EPOLLERR:
                     print "Error coonection: ", fileno
     finally:
         _poll.unregister(serversocket.fileno())
         _poll.close()
         serversocket.close()
     
+# A revised version of our thread class:
+class handlerThread(Thread):
+
+# Note that we do not override Thread's __init__ method.
+# The Queue module makes this not necessary.
+
+    def run(self):
+        
+        # Have our thread serve "forever":
+        while True:
+            # Get a client out of the queue
+            fl, fileno = q.get()
+            
+            # Check if we actually have an actual client in the client variable:
+            if fl != None:
+                if fl.channel == FLAP_FRAME_SIGNON:
+                    if not connections[fileno].accepted:
+                        connections[fileno].accepted = True
+#                            else:
+#                                epoll.modify(fileno, 0)
+#                                connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                    #print "New_connect tail:", tohex(fl.data[4:])
+                    tlvc = parse_tlv(fl.data[4:])
+                    if tlvc.has_key(FL_SIGNON_COOKIE):
+                        print "Second connect"
+                        a = db.db_get_cookie(tlvc[FL_SIGNON_COOKIE], cnf.getint('general', 'cookie_lifetime'))
+                        print str(a)
+                        if a:
+                            connections[fileno].uin = a
+                            sn = Snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
+                            fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+                            sn = Snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
+                            fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence + 1, sn.make_snac_tlv())
+                            connections[fileno].flap.put((fl.add_make_flap(fl2), 2))
+                            _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
+                elif connections[fileno].accepted and fl.channel == FLAP_FRAME_DATA:
+                    parse_snac(fl.data, fileno)
+                    _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
+                elif fl.channel == FLAP_FRAME_SIGNOFF:
+                    _poll.modify(fileno, 0)
+                    connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                
 
 if __name__ == '__main__':
     if hasattr(select, "epoll"):
         # Python 2.6+ on Linux
-        _poll = select.epoll
+        _events = select
+        _poll = select.epoll()
     elif hasattr(select, "kqueue"):
         # BSD
-        import _kqueue
+        from _kqueue import _kqueue
         _poll = _kqueue()
     else:
         # All other systems
+        from _select import _select
+        _events = _select()
         _poll = _select()
-
+    
+    handlerThread().start()
     main()
 
