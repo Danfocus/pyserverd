@@ -18,8 +18,6 @@ from threading import Thread
 
 from defines import * #@UnusedWildImport
 
-from db_mysql import db_mysql
-
 from flap import flap
 
 from snac import snac
@@ -31,10 +29,23 @@ connections = {}
 cnf = ConfigParser.ConfigParser()
 cnf.read('pyserverd.conf')
 
-db = db_mysql(cnf.get('db', 'db_host'), cnf.getint('db', 'db_port'),
-                       cnf.get('db', 'db_user'), cnf.get('db', 'db_passwd'),
-                       cnf.get('db', 'db_name'), cnf.getboolean('db', 'db_use_unicode'),
-                       cnf.get('db', 'db_charset'))
+if cnf.get('db','db_type') == 'mysql':
+    from databases import db_mysql
+    _sql = db_mysql.sql
+elif cnf.get('db','db_type') == 'pgsql':
+    from databases import db_pgsql
+    _sql = db_pgsql.sql
+else:
+    print "Database not supported"
+    exit()
+
+db = _sql(cnf.get('db', 'db_host'), cnf.getint('db', 'db_port'),
+               cnf.get('db', 'db_user'), cnf.get('db', 'db_passwd'),
+               cnf.get('db', 'db_name'), cnf.getboolean('db', 'db_use_unicode'),
+               cnf.get('db', 'db_charset'))
+
+
+
 
 def tohex(str_):
     """
