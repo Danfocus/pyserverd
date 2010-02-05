@@ -257,12 +257,12 @@ def main():
                             connections[fileno].osequence += oseq
                     _poll.modify(fileno, _events.EPOLLIN)
                 elif event & _events.EPOLLHUP:
-                    #print "Close coonection: ", fileno
+                    #print "Close connection: ", fileno
                     _poll.unregister(fileno)
                     connections[fileno].connection.close()
                     del connections[fileno]
                 elif event & _events.EPOLLERR:
-                    print "Error coonection: ", fileno
+                    print "Error connection: ", fileno
     finally:
         _poll.unregister(serversocket.fileno())
         _poll.close()
@@ -327,6 +327,6 @@ if __name__ == '__main__':
         _poll = _select()
     
     handlerThread().start()
-    handlerThread().start()
+    #handlerThread().start()
     main()
 
