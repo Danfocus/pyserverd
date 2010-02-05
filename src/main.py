@@ -12,6 +12,7 @@ import random
 import hashlib
 import time
 import ConfigParser
+#import logging
 
 from threading import Thread
 
@@ -70,6 +71,19 @@ def make_tlv(list_):
     text = "".join(slist)
     return text
 
+def make_tlvblock(list_):
+    text = make_tlv(list_)
+    fmt = '!H %ds' % len(text)
+    return struct.pack(fmt, len(list_), text)
+
+def make_tlvlblock(list_):
+    text = make_tlv(list_)
+    l = len(text)
+    fmt = '!H %ds' % l
+    return struct.pack(fmt, l, text)
+
+
+
 def make_fam_list():
     slist = [struct.pack('!H', x) for x in SUPPORTED_SERVICES.keys()]
     text = "".join(slist)
@@ -104,6 +118,7 @@ def make_rate_groups():
     return text
 
 def make_self_info(uin):
+    
     pass
 
 
@@ -124,9 +139,9 @@ def generate_cookie():
     return "".join(slist)
         
 def parse_snac(str_, fileno):
-    #global challenge, db
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
+    #print sn_family, sn_sub
     if sn_family == SN_TYP_REGISTRATION:
         if sn_sub == SN_IES_AUTHxREQUEST:
             challenge = str(random.randint(1000000000, 9999999999))
@@ -167,7 +182,9 @@ def parse_snac(str_, fileno):
                 connections[fileno].flap.put((fl.make_flap_close(), 1))       #connections[fileno].osequence = connections[fileno].osequence + 2
             else:
                 print "Auth - Fail"
-                
+        else:
+            print "unknown snac(%s,%s)" % (sn_family,sn_sub)
+            
     elif sn_family == SN_TYP_GENERIC:
         if sn_sub == SN_GEN_REQUESTxVERS:
             sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
@@ -183,6 +200,11 @@ def parse_snac(str_, fileno):
             pass
         elif sn_sub == SN_GEN_INFOxREQUEST:
             sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connections[fileno].uin))
+        else:
+            print "unknown snac(%s,%s)" % (sn_family,sn_sub)
+    
+    else:
+        print "unknown snac(%s,%s)" % (sn_family,sn_sub)
             
 
 def main():
@@ -190,7 +212,7 @@ def main():
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serversocket.bind((cnf.get('general', 'serv_addr'), cnf.getint('general', 'serv_port')))
-    serversocket.listen(1)
+    serversocket.listen(cnf.getint('general', 'connections_listen'))
     serversocket.setblocking(0)
     serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     
@@ -204,12 +226,10 @@ def main():
                 if fileno == serversocket.fileno():
                     connection, address = serversocket.accept()
                     connection.setblocking(0)
-                    #_poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
                     connections[connection.fileno()] = Connection(connection, address)
                     seq = random.randrange(0xFFFF)
                     fl = flap(FLAP_FRAME_SIGNON, seq, struct.pack('!i', FLAP_VERSION))
                     connections[connection.fileno()].osequence = seq
-                    #connections[connection.fileno()].accepted = 0
                         
                     #for stupid clients like qip2005
                     time.sleep(cnf.getint('general', 'new_connection_delay'))
@@ -220,7 +240,7 @@ def main():
                     #print "Ready to in: ", fileno
                     fl = flap()
                     conn = connections[fileno].connection.recv(FLAP_HDR_SIZE)
-                    if not conn:
+                    if (not conn) or (len(conn) < FLAP_HDR_SIZE):
                         _poll.modify(fileno, 0)
                         try:
                             connections[fileno].connection.shutdown(socket.SHUT_RDWR)
@@ -236,7 +256,15 @@ def main():
                                     else:
                                         connections[fileno].isequence += 1
                                     fl.data = connections[fileno].connection.recv(a)
-                                    q.put((fl, fileno))
+                                    if len(fl.data) == a:
+                                        q.put((fl, fileno))
+                                    else:
+                                        _poll.modify(fileno, 0)
+                                        try:
+                                            connections[fileno].connection.shutdown(socket.SHUT_RDWR)
+                                        except:
+                                            pass
+                                    
                                 else:
                                     _poll.modify(fileno, 0)
                                     try:
@@ -251,10 +279,16 @@ def main():
                                     pass
                 elif event & _events.EPOLLOUT:
                     #print "Ready to out: ", fileno
-                    while not connections[fileno].flap.empty():
-                        fl, oseq = connections[fileno].flap.get()
-                        if connections[fileno].connection.send(fl):
+                    if not connections[fileno].flap.empty():
+                        qsize = connections[fileno].flap.qsize()
+                        tfl = ""
+                        while (qsize):
+                            fl, oseq = connections[fileno].flap.get()
+                            tfl += fl
                             connections[fileno].osequence += oseq
+                            qsize -= 1
+                        
+                        connections[fileno].connection.send(tfl)
                     _poll.modify(fileno, _events.EPOLLIN)
                 elif event & _events.EPOLLHUP:
                     #print "Close connection: ", fileno
@@ -292,9 +326,9 @@ class handlerThread(Thread):
                     #print "New_connect tail:", tohex(fl.data[4:])
                     tlvc = parse_tlv(fl.data[4:])
                     if tlvc.has_key(FL_SIGNON_COOKIE):
-                        print "Second connect"
+                        #print "Second connect"
                         a = db.db_get_cookie(tlvc[FL_SIGNON_COOKIE], cnf.getint('general', 'cookie_lifetime'))
-                        print str(a)
+                        #print str(a)
                         if a:
                             connections[fileno].uin = a
                             sn = snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
