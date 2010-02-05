@@ -19,6 +19,10 @@ from defines import * #@UnusedWildImport
 
 from db_mysql import db_mysql
 
+from flap import flap
+
+from snac import snac
+
 q = Queue.Queue()
 
 connections = {}
@@ -103,25 +107,6 @@ def make_self_info(uin):
     pass
 
 
-
-class Snac(object):
-    def __init__(self, family, subtype, flags=0, id=0, data=None):
-        self.family = family
-        self.subtype = subtype
-        self.flags = flags
-        self.id = id
-        self.data = data
-    def parse_hdr(self, string):
-        return (ord(string[0]) << 8) + ord(string[1]), (ord(string[2]) << 8) + ord(string[3])
-    def make_snac(self):
-        l = len(self.data)
-        fmt = '!HHHIH %ds' % l
-        return struct.pack(fmt, self.family, self.subtype, self.flags, self.id, l, self.data)
-    def make_snac_tlv(self):
-        l = len(self.data)
-        fmt = '!HHHI %ds' % l
-        return struct.pack(fmt, self.family, self.subtype, self.flags, self.id, self.data)
-
 def parse_tlv(str_):
     tlvs = {}
     data = str_
@@ -149,13 +134,13 @@ def parse_snac(str_, fileno):
             tlvc = parse_tlv(str_[10:])
             if not db.db_set_challenge(tlvc[0x01], challenge):
                 tl = [Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x04, MISMATCH_PASSWD), Tlv_c(0x08, '\x00\x05')]
-                sn = Snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, make_tlv(tl))
-                fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+                sn = snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, make_tlv(tl))
+                fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
                 connections[fileno].flap.put((fl.make_flap_close(), 1))
                 return
             #c.execute("""UPDATE users SET challenge = %s WHERE uin = %s""", (challenge, tlvc[0x01]))
-            sn = Snac(SN_TYP_REGISTRATION, SN_IES_AUTHxKEY, 0, 0, challenge)
-            fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac())
+            sn = snac(SN_TYP_REGISTRATION, SN_IES_AUTHxKEY, 0, 0, challenge)
+            fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac())
             connections[fileno].flap.put((fl.make_flap(), 1))
         elif sn_sub == SN_IES_AUTHxLOGIN:
             m = hashlib.md5()
@@ -177,55 +162,29 @@ def parse_snac(str_, fileno):
                 #c.execute("""REPLACE INTO users_cookies SET users_uin = %s, cookie = %s""",(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie)))
                 tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, cnf.get('general', 'bos_addr')), Tlv_c(0x06, cookie)]
                 a = make_tlv(tl)
-                sn = Snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, a)
-                fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+                sn = snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, a)
+                fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
                 connections[fileno].flap.put((fl.make_flap_close(), 1))       #connections[fileno].osequence = connections[fileno].osequence + 2
             else:
                 print "Auth - Fail"
                 
     elif sn_family == SN_TYP_GENERIC:
         if sn_sub == SN_GEN_REQUESTxVERS:
-            sn = Snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
-            fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-            sn = Snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_motd())
-            fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence + 1, sn.make_snac_tlv())
+            sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
+            fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+            sn = snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_motd())
+            fl2 = flap(FLAP_FRAME_DATA, connections[fileno].osequence + 1, sn.make_snac_tlv())
             connections[fileno].flap.put((fl.add_make_flap(fl2), 2))
         elif sn_sub == SN_GEN_REQUESTxRATE:
-            sn = Snac(SN_TYP_GENERIC, SN_GEN_RATExRESPONSE, 0, 0, make_rate_info() + make_rate_groups())
-            fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+            sn = snac(SN_TYP_GENERIC, SN_GEN_RATExRESPONSE, 0, 0, make_rate_info() + make_rate_groups())
+            fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
             connections[fileno].flap.put((fl.make_flap(), 1))
         elif sn_sub == SN_GEN_RATExACK:
             pass
         elif sn_sub == SN_GEN_INFOxREQUEST:
-            sn = Snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connections[fileno].uin))
+            sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connections[fileno].uin))
             
 
-class Flap(object):
-    def __init__(self, channel=None, sequence=None, data=None):
-        self.channel = channel
-        self.data = data
-        self.sequence = sequence
-    def parse_hdr(self, string):
-        if ord(string[0]) != FLAP_STARTMARKER:
-            return
-        self.channel = ord(string[1])
-        self.sequence = (ord(string[2]) << 8) + ord(string[3])
-        return (ord(string[4]) << 8) + ord(string[5])
-    def channel(self, channel):
-        self.channel = channel
-    def data(self, data):
-        self.data = data
-    def sequence(self, sequence):
-        self.sequence = sequence
-    def make_flap(self):
-        l = len(self.data)
-        fmt = '!BBHH %ds' % l
-        return struct.pack(fmt, FLAP_STARTMARKER, self.channel, self.sequence, l, self.data)
-    def make_flap_close(self):
-        return self.make_flap() + struct.pack('!BBHH', FLAP_STARTMARKER, FLAP_FRAME_SIGNOFF, self.sequence + 1, 0)
-    def add_make_flap(self, fl):
-        return self.make_flap() + fl.make_flap()
-    
 def main():
     
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -248,7 +207,7 @@ def main():
                     #_poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
                     connections[connection.fileno()] = Connection(connection, address)
                     seq = random.randrange(0xFFFF)
-                    fl = Flap(FLAP_FRAME_SIGNON, seq, struct.pack('!i', FLAP_VERSION))
+                    fl = flap(FLAP_FRAME_SIGNON, seq, struct.pack('!i', FLAP_VERSION))
                     connections[connection.fileno()].osequence = seq
                     #connections[connection.fileno()].accepted = 0
                         
@@ -259,7 +218,7 @@ def main():
                     _poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
                 elif event & _events.EPOLLIN:
                     #print "Ready to in: ", fileno
-                    fl = Flap()
+                    fl = flap()
                     conn = connections[fileno].connection.recv(FLAP_HDR_SIZE)
                     if not conn:
                         _poll.modify(fileno, 0)
@@ -338,10 +297,10 @@ class handlerThread(Thread):
                         print str(a)
                         if a:
                             connections[fileno].uin = a
-                            sn = Snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
-                            fl = Flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-                            sn = Snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
-                            fl2 = Flap(FLAP_FRAME_DATA, connections[fileno].osequence + 1, sn.make_snac_tlv())
+                            sn = snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
+                            fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+                            sn = snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
+                            fl2 = flap(FLAP_FRAME_DATA, connections[fileno].osequence + 1, sn.make_snac_tlv())
                             connections[fileno].flap.put((fl.add_make_flap(fl2), 2))
                             _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
                 elif connections[fileno].accepted and fl.channel == FLAP_FRAME_DATA:
@@ -367,6 +326,7 @@ if __name__ == '__main__':
         _events = _select()
         _poll = _select()
     
+    handlerThread().start()
     handlerThread().start()
     main()
 
