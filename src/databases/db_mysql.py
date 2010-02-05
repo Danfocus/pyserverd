@@ -6,7 +6,7 @@ Created on 11.01.2010
 
 import MySQLdb
 
-class db_mysql(object):
+class sql(object):
     '''
     classdocs
     '''

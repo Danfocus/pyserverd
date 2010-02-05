@@ -41,6 +41,9 @@ class _select(object):
         self.write_fds.discard(fd)
         self.error_fds.discard(fd)
     
+    def close(self):
+        del(self)
+    
     def poll(self, timeout):
         readable, writeable, errors = select(self.read_fds, self.write_fds, self.error_fds, timeout)
         events = {}
