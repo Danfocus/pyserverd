@@ -8,18 +8,18 @@ from select import select
 
 class _select(object):
     
-    _EPOLLIN = 0x001
-    _EPOLLPRI = 0x002
-    _EPOLLOUT = 0x004
-    _EPOLLERR = 0x008
-    _EPOLLHUP = 0x010
-    _EPOLLRDHUP = 0x2000
-    _EPOLLONESHOT = (1 << 30)
-    _EPOLLET = (1 << 31)
+    EPOLLIN = 0x001
+    EPOLLPRI = 0x002
+    EPOLLOUT = 0x004
+    EPOLLERR = 0x008
+    EPOLLHUP = 0x010
+    EPOLLRDHUP = 0x2000
+    EPOLLONESHOT = (1 << 30)
+    EPOLLET = (1 << 31)
     
-    READ = _EPOLLIN
-    WRITE = _EPOLLOUT
-    ERROR = _EPOLLERR | _EPOLLHUP | _EPOLLRDHUP
+    READ = EPOLLIN
+    WRITE = EPOLLOUT
+    ERROR = EPOLLERR | EPOLLHUP | EPOLLRDHUP
     
     def __init__(self):
         self.read_fds = set()
