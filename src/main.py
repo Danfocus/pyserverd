@@ -72,7 +72,7 @@ class Tlv_c(object):
         self.len = len
     def make_tlv_c(self):
         if self.len:
-            l = len
+            l = self.len
         else:
             l = len(self.value)
         fmt = '!HH %ds' % l
@@ -133,8 +133,10 @@ def make_self_info(fileno):
     tl = [Tlv_c(1, 81),
           Tlv_c(12, '', 32),
           Tlv_c(10, connections[fileno].address[0])]
-    tl.append(Tlv_c(5, db.db_select_users_where("UNIX_TIMESTAMP(member_since)", connections[fileno].uin)[0],4))
-    pass
+    tl.append(Tlv_c(5, db.db_select_users_where("UNIX_TIMESTAMP(member_since)", connections[fileno].uin)[0], 4))
+    tl.append(Tlv_c(15, 1, 4))
+    tl.append(Tlv_c(3, db.db_select_users_where("UNIX_TIMESTAMP(online_since)", connections[fileno].uin)[0], 4))
+    return struct.pack("!B %ds H" % len(str(connections[fileno].uin)), len(str(connections[fileno].uin)), str(connections[fileno].uin), 0) + make_tlvblock(tl)
 
 
 def parse_tlv(str_):
@@ -216,6 +218,8 @@ def parse_snac(str_, fileno):
             pass
         elif sn_sub == SN_GEN_INFOxREQUEST:
             sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(fileno))
+            fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+            connections[fileno].flap.put((fl.make_flap(), 1))
         else:
             print "unknown snac(%s,%s)" % (sn_family, sn_sub)
     
