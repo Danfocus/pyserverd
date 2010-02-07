@@ -11,7 +11,7 @@ class sql(object):
     classdocs
     '''
 
-    def __init__(self,db_host,db_port,db_user,db_passwd,db_name,db_use_unicode,db_charset):
+    def __init__(self, db_host, db_port, db_user, db_passwd, db_name, db_use_unicode, db_charset):
         db = MySQLdb.connect(host=db_host, port=db_port, user=db_user, passwd=db_passwd, db=db_name, use_unicode=db_use_unicode, charset=db_charset)
         self.c = db.cursor()
     
@@ -30,7 +30,7 @@ class sql(object):
         else:
             return None
     
-    def db_check_challenge_expired(self,db_cookie_lifetime):
+    def db_check_challenge_expired(self, db_cookie_lifetime):
         self.c.execute("""DELETE FROM users_challenges WHERE NOW() > cdate + %s""", db_cookie_lifetime)
                
     def db_set_cookie(self, uin, cookie):
@@ -42,7 +42,7 @@ class sql(object):
         self.c.execute(str_, (whr_))
         return self.c.fetchone()
     
-    def db_get_cookie(self, cookie,db_cookie_lifetime):
+    def db_get_cookie(self, cookie, db_cookie_lifetime):
         self.db_check_cookie_expired(db_cookie_lifetime)
         self.c.execute("""SELECT users_uin FROM users_cookies WHERE cookie = %s""", (cookie))
         uin = self.c.fetchone()
@@ -53,7 +53,7 @@ class sql(object):
         else:
             return None
     
-    def db_check_cookie_expired(self,db_cookie_lifetime):
+    def db_check_cookie_expired(self, db_cookie_lifetime):
         self.c.execute("""DELETE FROM users_cookies WHERE NOW() > cdate + %s""", db_cookie_lifetime)       
     
 
