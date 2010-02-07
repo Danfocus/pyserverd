@@ -29,10 +29,10 @@ connections = {}
 cnf = ConfigParser.ConfigParser()
 cnf.read('pyserverd.conf')
 
-if cnf.get('db','db_type') == 'mysql':
+if cnf.get('db', 'db_type') == 'mysql':
     from databases import db_mysql
     _sql = db_mysql.sql
-elif cnf.get('db','db_type') == 'pgsql':
+elif cnf.get('db', 'db_type') == 'pgsql':
     from databases import db_pgsql
     _sql = db_pgsql.sql
 else:
@@ -43,9 +43,6 @@ db = _sql(cnf.get('db', 'db_host'), cnf.getint('db', 'db_port'),
                cnf.get('db', 'db_user'), cnf.get('db', 'db_passwd'),
                cnf.get('db', 'db_name'), cnf.getboolean('db', 'db_use_unicode'),
                cnf.get('db', 'db_charset'))
-
-
-
 
 def tohex(str_):
     """
@@ -128,8 +125,11 @@ def make_rate_groups():
     text = "".join(slist)
     return text
 
-def make_self_info(uin):
-    
+def make_self_info(fileno):
+    tl = [Tlv_c(1,81),
+          Tlv_c(12,'\x0000000000000000000000000000000000000'),
+          Tlv_c(10,connections[fileno].address),
+          Tlv_c(5,db.db_select_users_where("member_since",connections[fileno].address))]
     pass
 
 
@@ -156,7 +156,6 @@ def parse_snac(str_, fileno):
     if sn_family == SN_TYP_REGISTRATION:
         if sn_sub == SN_IES_AUTHxREQUEST:
             challenge = str(random.randint(1000000000, 9999999999))
-            #c = db.cursor()
             tlvc = parse_tlv(str_[10:])
             if not db.db_set_challenge(tlvc[0x01], challenge):
                 tl = [Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x04, MISMATCH_PASSWD), Tlv_c(0x08, '\x00\x05')]
@@ -164,16 +163,16 @@ def parse_snac(str_, fileno):
                 fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
                 connections[fileno].flap.put((fl.make_flap_close(), 1))
                 return
-            #c.execute("""UPDATE users SET challenge = %s WHERE uin = %s""", (challenge, tlvc[0x01]))
             sn = snac(SN_TYP_REGISTRATION, SN_IES_AUTHxKEY, 0, 0, challenge)
             fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac())
             connections[fileno].flap.put((fl.make_flap(), 1))
         elif sn_sub == SN_IES_AUTHxLOGIN:
             m = hashlib.md5()
             tlvc = parse_tlv(str_[10:])
-            challenge, password = db.db_select_users_where("challenge,password", tlvc[0x01])
+            challenge = db.db_get_challenge(tlvc[0x01], cnf.getint('general', 'cookie_lifetime'))
+            password = db.db_select_users_where("password", tlvc[0x01])
             m.update(challenge)
-            if tlvc.has_key(0x4c):
+            if 0x4c in tlvc:
                 m2 = hashlib.md5()
                 m2.update(password)
                 m.update(m2.digest())
@@ -185,7 +184,6 @@ def parse_snac(str_, fileno):
                 print "Auth - OK"
                 cookie = generate_cookie()
                 db.db_set_cookie(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie))
-                #c.execute("""REPLACE INTO users_cookies SET users_uin = %s, cookie = %s""",(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie)))
                 tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, cnf.get('general', 'bos_addr')), Tlv_c(0x06, cookie)]
                 a = make_tlv(tl)
                 sn = snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, a)
@@ -194,7 +192,7 @@ def parse_snac(str_, fileno):
             else:
                 print "Auth - Fail"
         else:
-            print "unknown snac(%s,%s)" % (sn_family,sn_sub)
+            print "unknown snac(%s,%s)" % (sn_family, sn_sub)
             
     elif sn_family == SN_TYP_GENERIC:
         if sn_sub == SN_GEN_REQUESTxVERS:
@@ -210,12 +208,12 @@ def parse_snac(str_, fileno):
         elif sn_sub == SN_GEN_RATExACK:
             pass
         elif sn_sub == SN_GEN_INFOxREQUEST:
-            sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connections[fileno].uin))
+            sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(fileno))
         else:
-            print "unknown snac(%s,%s)" % (sn_family,sn_sub)
+            print "unknown snac(%s,%s)" % (sn_family, sn_sub)
     
     else:
-        print "unknown snac(%s,%s)" % (sn_family,sn_sub)
+        print "unknown snac(%s,%s)" % (sn_family, sn_sub)
             
 
 def main():
@@ -300,7 +298,8 @@ def main():
                             qsize -= 1
                         
                         connections[fileno].connection.send(tfl)
-                    _poll.modify(fileno, _events.EPOLLIN)
+                    if connections[fileno].flap.empty():
+                        _poll.modify(fileno, _events.EPOLLIN)
                 elif event & _events.EPOLLHUP:
                     #print "Close connection: ", fileno
                     _poll.unregister(fileno)
@@ -336,7 +335,7 @@ class handlerThread(Thread):
 #                                connections[fileno].connection.shutdown(socket.SHUT_RDWR)
                     #print "New_connect tail:", tohex(fl.data[4:])
                     tlvc = parse_tlv(fl.data[4:])
-                    if tlvc.has_key(FL_SIGNON_COOKIE):
+                    if FL_SIGNON_COOKIE in tlvc:
                         #print "Second connect"
                         a = db.db_get_cookie(tlvc[FL_SIGNON_COOKIE], cnf.getint('general', 'cookie_lifetime'))
                         #print str(a)
@@ -374,4 +373,5 @@ if __name__ == '__main__':
     handlerThread().start()
     #handlerThread().start()
     main()
+
 
