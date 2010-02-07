@@ -16,13 +16,19 @@ class sql(object):
         self.c = db.cursor()
     
     def db_set_challenge(self, uin, challenge):
-        self.c.execute("""REPLACE INTO users_challenges SET challenge = %s WHERE uin = %s""", (challenge, uin))
+        self.c.execute("""REPLACE INTO users_challenges SET users_uin = %s, challenge = %s""", (uin, challenge))
         return self.c.rowcount
     
     def db_get_challenge(self, uin, db_cookie_lifetime):
         self.db_check_challenge_expired(db_cookie_lifetime)
-        self.c.execute("""SELECT FROM users_challenges WHERE uin = %s""", (uin))
-        return self.c.rowcount
+        self.c.execute("""SELECT challenge FROM users_challenges WHERE users_uin = %s""", (uin))
+        challenge = self.c.fetchone()
+            #uin = self.c.fetchone()[0]
+        if challenge:
+            self.c.execute("""DELETE FROM users_challenges WHERE users_uin = %s""", (uin))
+            return challenge[0]
+        else:
+            return None
     
     def db_check_challenge_expired(self,db_cookie_lifetime):
         self.c.execute("""DELETE FROM users_challenges WHERE NOW() > cdate + %s""", db_cookie_lifetime)
