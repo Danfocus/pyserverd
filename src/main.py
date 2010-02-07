@@ -66,11 +66,15 @@ class Connection(object):
         self.flap = Queue.Queue()
 
 class Tlv_c(object):
-    def __init__(self, id, value):
+    def __init__(self, id, value, len=None):
         self.id = id
         self.value = str(value)
+        self.len = len
     def make_tlv_c(self):
-        l = len(self.value)
+        if self.len:
+            l = len
+        else:
+            l = len(self.value)
         fmt = '!HH %ds' % l
         return struct.pack(fmt, self.id, l, self.value)
     
@@ -126,10 +130,10 @@ def make_rate_groups():
     return text
 
 def make_self_info(fileno):
-    tl = [Tlv_c(1,81),
-          Tlv_c(12,'\x0000000000000000000000000000000000000'),
-          Tlv_c(10,connections[fileno].address),
-          Tlv_c(5,db.db_select_users_where("member_since",connections[fileno].address))]
+    tl = [Tlv_c(1, 81),
+          Tlv_c(12, '', 32),
+          Tlv_c(10, connections[fileno].address[0])]
+    tl.append(Tlv_c(5, db.db_select_users_where("UNIX_TIMESTAMP(member_since)", connections[fileno].uin)[0],4))
     pass
 
 
@@ -170,27 +174,30 @@ def parse_snac(str_, fileno):
             m = hashlib.md5()
             tlvc = parse_tlv(str_[10:])
             challenge = db.db_get_challenge(tlvc[0x01], cnf.getint('general', 'cookie_lifetime'))
-            password = db.db_select_users_where("password", tlvc[0x01])
-            m.update(challenge)
-            if 0x4c in tlvc:
-                m2 = hashlib.md5()
-                m2.update(password)
-                m.update(m2.digest())
+            if challenge:
+                password = db.db_select_users_where("password", tlvc[0x01])[0]
+                m.update(challenge)
+                if 0x4c in tlvc:
+                    m2 = hashlib.md5()
+                    m2.update(password)
+                    m.update(m2.digest())
+                else:
+                    m.update(password)
+                m.update(AIM_MD5_STRING)
+                
+                if tlvc[0x25] == m.digest():
+                    print "Auth - OK"
+                    cookie = generate_cookie()
+                    db.db_set_cookie(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie))
+                    tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, cnf.get('general', 'bos_addr')), Tlv_c(0x06, cookie)]
+                    a = make_tlv(tl)
+                    sn = snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, a)
+                    fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+                    connections[fileno].flap.put((fl.make_flap_close(), 1))       #connections[fileno].osequence = connections[fileno].osequence + 2
+                else:
+                    print "Auth - Fail - wrong password"
             else:
-                m.update(password)
-            m.update(AIM_MD5_STRING)
-            
-            if tlvc[0x25] == m.digest():
-                print "Auth - OK"
-                cookie = generate_cookie()
-                db.db_set_cookie(tlvc[0x01], struct.pack("!%ds" % len(cookie), cookie))
-                tl = [Tlv_c(0x8e, '\x00'), Tlv_c(0x01, tlvc[0x01]), Tlv_c(0x05, cnf.get('general', 'bos_addr')), Tlv_c(0x06, cookie)]
-                a = make_tlv(tl)
-                sn = snac(SN_TYP_REGISTRATION, SN_IES_LOGINxREPLY, 0, 0, a)
-                fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-                connections[fileno].flap.put((fl.make_flap_close(), 1))       #connections[fileno].osequence = connections[fileno].osequence + 2
-            else:
-                print "Auth - Fail"
+                print "Auth - Fail - no challenge"
         else:
             print "unknown snac(%s,%s)" % (sn_family, sn_sub)
             
@@ -362,11 +369,12 @@ if __name__ == '__main__':
         _poll = select.epoll()
     elif hasattr(select, "kqueue"):
         # BSD
-        from _kqueue import _kqueue
+        from eventhandlers._kqueue import _kqueue
+        _events = _kqueue()
         _poll = _kqueue()
     else:
         # All other systems
-        from _select import _select
+        from eventhandlers._select import _select
         _events = _select()
         _poll = _select()
     
