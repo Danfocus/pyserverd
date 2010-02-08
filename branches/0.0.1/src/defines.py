@@ -53,6 +53,7 @@ SN_GEN_VERSxRESPONSE = 24
 # SNAC 19 subtypes
 SN_SSI_PARAMxREQUEST = 2
 SN_SSI_PARAMxREPLY = 3
+SN_SSI_ROASTERxREQUEST = 4
 
 # SNAC 23 subtypes
 SN_IES_AUTHxLOGIN = 2
@@ -129,3 +130,4 @@ RATE_GROUPS = {
                 5:()
                }
 
+MAX_FOR_ITEMS = (3000, 100, 1000, 1000, 1, 1, 50, 0, 0, 3, 0, 0, 0, 128, 1000, 20, 200, 1, 0, 1, 15, 1, 40, 0, 0, 200, 1, 20, 200, 1, 8, 20, 1, 0, 0, 0, 50, 0, 5, 500, 1, 8)

@@ -7,11 +7,12 @@ import snac_families.sn01_generic
 import snac_families.sn19_ssi
 import snac_families.sn23_registration
 
-#from tlv_procs import parse_tlv
-from cnf import cnf
-
 from tlv_procs import parse_tlv
 from snac import snac
+from flap import flap
+
+from cnf import cnf
+cnf = cnf.cnf
 
 from eventhandlers import _poll
 _events = _poll._poll._events
@@ -21,7 +22,6 @@ from db import db
 db = db.db
 
 import socket
-#import select
 import struct
 import Queue
 import random
@@ -32,15 +32,10 @@ from threading import Thread
 
 from defines import * #@UnusedWildImport
 
-from flap import flap
-
-#from snac import snac
-
 q = Queue.Queue()
 
 connections = {}
 
-cnf = cnf.cnf
 
 def tohex(str_):
     """
@@ -81,7 +76,7 @@ def parse_snac(str_, connection):
     if sn_family == SN_TYP_REGISTRATION:
         snac_families.sn23_registration.parse_snac_registration(sn_sub, connection, str_)
     elif sn_family == SN_TYP_GENERIC:
-        snac_families.sn01_generic.parse_snac_generic(sn_sub,connection)
+        snac_families.sn01_generic.parse_snac_generic(sn_sub, connection)
     elif sn_family == SN_TYP_SSI:
         snac_families.sn19_ssi.parse_snac_ssi(sn_sub, connection)
             #sn = snac(SN_TYP_SSI, SN_SSI_PARAMxREPLY, 0, 0, make_ssi_param())
