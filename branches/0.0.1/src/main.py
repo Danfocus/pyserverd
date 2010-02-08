@@ -12,11 +12,8 @@ from snac import snac
 from flap import flap
 
 from cnf import cnf
+import select
 cnf = cnf.cnf
-
-from eventhandlers import _poll
-_events = _poll._poll._events
-_poll = _poll._poll._poll
 
 from db import db
 db = db.db
@@ -228,6 +225,22 @@ class handlerThread(Thread):
                 
 
 if __name__ == '__main__':
+    
+    if hasattr(select, "epoll"):
+        # Python 2.6+ on Linux
+        _events = select
+        _poll = select.epoll()
+    elif hasattr(select, "kqueue"):
+        # BSD
+        from eventhandlers._kqueue import _kqueue
+        _events = _kqueue()
+        _poll = _kqueue()
+    else:
+        # All other systems
+        from eventhandlers._select import _select
+        _events = _select()
+        _poll = _select()
+        
     handlerThread().start()
     #handlerThread().start()
     main()

@@ -33,5 +33,5 @@ def make_ssi_param():
     text = "".join(slist)
     tl = [tlv_c(4, text), tlv_c(2, 254, "!H"), tlv_c(3, 1698, "!H"), tlv_c(5, 100, "!H"), tlv_c(6, 97, "!H"),
           tlv_c(7, 200, "!H"), tlv_c(8, 10, "!H"), tlv_c(9, 432000, "!I"), tlv_c(10, 14, "!I"),
-          tlv_c(11, 0, "!H"), tlv_c(12, 600, "!H"), tlv_c(13, 0, "!H"), tlv_c(13, 32, "!H")]
+          tlv_c(11, 0, "!H"), tlv_c(12, 600, "!H"), tlv_c(13, 0, "!H"), tlv_c(14, 32, "!H")]
     return make_tlv(tl)  
