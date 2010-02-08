@@ -42,6 +42,11 @@ class sql(object):
         self.c.execute(str_, (whr_))
         return self.c.fetchone()
     
+    def db_update_users_where(self, upd_, val_, whr_):
+        str_ = """UPDATE users SET """ + upd_ + """ = """ + val_ + """ WHERE uin = %s"""
+        self.c.execute(str_, (whr_))
+    
+    
     def db_get_cookie(self, cookie, db_cookie_lifetime):
         self.db_check_cookie_expired(db_cookie_lifetime)
         self.c.execute("""SELECT users_uin FROM users_cookies WHERE cookie = %s""", (cookie))
