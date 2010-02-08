@@ -66,12 +66,12 @@ def make_self_info(connection, db):
     tl = [tlv_c(1, 81, '!H'),
           tlv_c(12, '', '37s'),
           tlv_c(10, socket.inet_aton(connection.address[0]))]
-    tl.append(tlv_c(5, db.db_select_users_where("UNIX_TIMESTAMP(member_since)", connection.uin)[0], '!I'))
+    tl.append(tlv_c(5, db.db_select_unixtimestamp_users_where("member_since", connection.uin)[0], '!I'))
     tl.append(tlv_c(15, 1, '!I'))
-    online_since = db.db_select_users_where("UNIX_TIMESTAMP(online_since)", connection.uin)[0]
+    online_since = db.db_select_unixtimestamp_users_where("online_since", connection.uin)[0]
     if not online_since:
         db.db_update_users_where('online_since', 'NOW()', connection.uin)
-        online_since = db.db_select_users_where("UNIX_TIMESTAMP(online_since)", connection.uin)[0]
+        online_since = db.db_select_unixtimestamp_users_where("online_since", connection.uin)[0]
     tl.append(tlv_c(3, online_since, '!I'))
     tl.append(tlv_c(21,2048,'!I'))
     tl.append(tlv_c(34,38710,'!H'))

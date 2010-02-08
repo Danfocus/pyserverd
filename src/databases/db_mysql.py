@@ -61,4 +61,6 @@ class sql(object):
     def db_check_cookie_expired(self, db_cookie_lifetime):
         self.c.execute("""DELETE FROM users_cookies WHERE NOW() > cdate + %s""", db_cookie_lifetime)       
     
+    def db_select_unixtimestamp_users_where(self, sel_, whr_):
+        return self.db_select_users_where('UNIX_TIMESTAMP(%s)' % sel_, whr_)
 
