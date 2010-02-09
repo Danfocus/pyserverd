@@ -51,3 +51,4 @@ def correct_value(str_):
     if type(str_) is NoneType:
         str_ = ''
     return str_      
+

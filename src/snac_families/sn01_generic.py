@@ -7,9 +7,9 @@ Created on 08.02.2010
 from snac import snac
 from tlv_c import tlv_c
 from tlv_procs import make_tlvblock
-from defines import SN_GEN_REQUESTxVERS, SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE,\
-    FLAP_FRAME_DATA, SN_GEN_MOTD, SN_GEN_REQUESTxRATE, SN_GEN_RATExRESPONSE,\
-    SN_GEN_RATExACK, SN_GEN_INFOxREQUEST, SN_GEN_INFOxRESPONSE,\
+from defines import SN_GEN_REQUESTxVERS, SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, \
+    FLAP_FRAME_DATA, SN_GEN_MOTD, SN_GEN_REQUESTxRATE, SN_GEN_RATExRESPONSE, \
+    SN_GEN_RATExACK, SN_GEN_INFOxREQUEST, SN_GEN_INFOxRESPONSE, \
     SUPPORTED_SERVICES, RATE_CLASSES, RATE_GROUPS
 from flap import flap
 
@@ -73,11 +73,11 @@ def make_self_info(connection, db):
         db.db_update_users_where('online_since', 'NOW()', connection.uin)
         online_since = db.db_select_unixtimestamp_users_where("online_since", connection.uin)[0]
     tl.append(tlv_c(3, online_since, '!I'))
-    tl.append(tlv_c(21,2048,'!I'))
-    tl.append(tlv_c(34,38710,'!H'))
-    tl.append(tlv_c(30,0,'!I'))
-    tl.append(tlv_c(40,0,'!B'))
-    tl.append(tlv_c(45,0,'!I'))
-    tl.append(tlv_c(44,0,'!I'))
+    tl.append(tlv_c(21, 2048, '!I'))
+    tl.append(tlv_c(34, 38710, '!H'))
+    tl.append(tlv_c(30, 0, '!I'))
+    tl.append(tlv_c(40, 0, '!B'))
+    tl.append(tlv_c(45, 0, '!I'))
+    tl.append(tlv_c(44, 0, '!I'))
     return struct.pack("!B %ds H" % len(str(connection.uin)), len(str(connection.uin)), str(connection.uin), 0) + make_tlvblock(tl)
 

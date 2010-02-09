@@ -3,8 +3,8 @@ Created on 08.02.2010
 
 @author: danfocus
 '''
-from defines import MISMATCH_PASSWD, SN_TYP_REGISTRATION, FLAP_FRAME_DATA,\
-    AIM_MD5_STRING, SN_REG_AUTHxREQUEST, SN_REG_LOGINxREPLY, SN_REG_AUTHxKEY,\
+from defines import MISMATCH_PASSWD, SN_TYP_REGISTRATION, FLAP_FRAME_DATA, \
+    AIM_MD5_STRING, SN_REG_AUTHxREQUEST, SN_REG_LOGINxREPLY, SN_REG_AUTHxKEY, \
     SN_REG_AUTHxLOGIN
 from tlv_c import tlv_c
 from tlv_procs import make_tlv, parse_tlv
@@ -21,7 +21,7 @@ cnf = cnf.cnf
 from db import db
 db = db.db
 
-def parse_snac(sn_sub,connection,str_):
+def parse_snac(sn_sub, connection, str_):
     if sn_sub == SN_REG_AUTHxREQUEST:
         challenge = str(random.randint(1000000000, 9999999999))
         tlvc = parse_tlv(str_[10:])
@@ -69,3 +69,4 @@ def generate_cookie():
     slist = map(lambda x: chr(random.randint(0, 0xFF)), xrange(256))
     return "".join(slist)
         
+
