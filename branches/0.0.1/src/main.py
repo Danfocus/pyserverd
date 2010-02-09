@@ -76,9 +76,6 @@ def parse_snac(str_, connection):
         snac_families.sn01_generic.parse_snac_generic(sn_sub, connection)
     elif sn_family == SN_TYP_SSI:
         snac_families.sn19_ssi.parse_snac_ssi(sn_sub, connection)
-            #sn = snac(SN_TYP_SSI, SN_SSI_PARAMxREPLY, 0, 0, make_ssi_param())
-            #fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
-            #connections[fileno].flap.put((fl.make_flap(), 1))
     else:
         print "unknown snac(%s,%s)" % (sn_family, sn_sub)
 
@@ -212,9 +209,10 @@ class handlerThread(Thread):
                             connections[fileno].uin = a
                             sn = snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
                             fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence, sn.make_snac_tlv())
+                            connections[fileno].flap.put((fl.make_flap(), 1))
                             sn = snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
-                            fl2 = flap(FLAP_FRAME_DATA, connections[fileno].osequence + 1, sn.make_snac_tlv())
-                            connections[fileno].flap.put((fl.add_make_flap(fl2), 2))
+                            fl = flap(FLAP_FRAME_DATA, connections[fileno].osequence + 1, sn.make_snac_tlv())
+                            connections[fileno].flap.put((fl.make_flap(), 1))
                             _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
                 elif connections[fileno].accepted and fl.channel == FLAP_FRAME_DATA:
                     parse_snac(fl.data, connections[fileno])
