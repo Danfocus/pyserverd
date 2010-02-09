@@ -76,6 +76,8 @@ def parse_snac(str_, connection):
         sn01_generic.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_LOCATION:
         sn02_location.parse_snac(sn_sub, connection)
+    elif sn_family == SN_TYP_BUDDYLIST:
+        sn03_buddylist.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_SSI:
         sn19_ssi.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_REGISTRATION:

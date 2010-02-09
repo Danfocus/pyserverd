@@ -83,22 +83,22 @@ class sql(object):
         self.c.execute("""SELECT COUNT(*) FROM users_ssi_data WHERE gid = 0 AND id = 1 AND type = 5 AND users_uin = %s""", (uin))
         res = self.c.fetchone()
         if (res) and (not res[0]):
-            tl = [tlv_c(201,0,"!I"),tlv_c(214,0,"!I")]
+            tl = [tlv_c(201, 0, "!I"), tlv_c(214, 0, "!I")]
             self.c.execute("""INSERT INTO users_ssi_data SET users_uin = %s, gid = 0, id = 1, type = 5, text = %s""", (uin, make_tlv(tl)))
             #ssi_changed = True
             
         self.c.execute("""SELECT COUNT(*) FROM users_ssi_data WHERE gid = 0 AND id = 2 AND type = 32 AND users_uin = %s""", (uin))
         res = self.c.fetchone()
         if (res) and (not res[0]):
-            tl = [tlv_c(348,'\xf5\x28\xfc\x0c\x0b\x80\x48\x53\x83\x34\xb7\x2a\xb9\x2d\x42\x45'),
-                  tlv_c(349,'\x40\xe3\x9f\x69\xbf\xe7\xba\x37')]
+            tl = [tlv_c(348, '\xf5\x28\xfc\x0c\x0b\x80\x48\x53\x83\x34\xb7\x2a\xb9\x2d\x42\x45'),
+                  tlv_c(349, '\x40\xe3\x9f\x69\xbf\xe7\xba\x37')]
             self.c.execute("""INSERT INTO users_ssi_data SET users_uin = %s, gid = 0, id = 2, type = 32, name = 'ICQ-MDIR', text = %s""", (uin, make_tlv(tl)))
             #ssi_changed = True
             
         self.c.execute("""SELECT COUNT(*) FROM users_ssi_data WHERE gid = 0 AND id = 3 AND type = 4 AND users_uin = %s""", (uin))
         res = self.c.fetchone()
         if (res) and (not res[0]):
-            tl = [tlv_c(366,2,"!B")]
+            tl = [tlv_c(366, 2, "!B")]
             self.c.execute("""INSERT INTO users_ssi_data SET users_uin = %s, gid = 0, id = 3, type = 4, text = %s""", (uin, make_tlv(tl)))
             #ssi_changed = True
             
