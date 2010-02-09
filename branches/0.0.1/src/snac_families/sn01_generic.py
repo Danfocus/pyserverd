@@ -19,7 +19,7 @@ import struct
 from db import db
 db = db.db
 
-def parse_snac_generic(sn_sub, connection):
+def parse_snac(sn_sub, connection):
     if sn_sub == SN_GEN_REQUESTxVERS:
         sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
         fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())

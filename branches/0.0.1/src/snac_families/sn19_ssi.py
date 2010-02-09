@@ -7,6 +7,7 @@ from defines import SN_SSI_PARAMxREQUEST, SN_SSI_PARAMxREPLY, SN_TYP_SSI, \
     FLAP_FRAME_DATA, MAX_FOR_ITEMS, SN_SSI_ROASTERxREQUEST, SN_SSI_ROASTERxREPLY
 
 from db import db
+from types import NoneType
 db = db.db
 
 import struct
@@ -17,7 +18,7 @@ from tlv_c import tlv_c
 from tlv_procs import make_tlv
 
 
-def parse_snac_ssi(sn_sub, connection):
+def parse_snac(sn_sub, connection):
     if sn_sub == SN_SSI_PARAMxREQUEST:
         sn = snac(SN_TYP_SSI, SN_SSI_PARAMxREPLY, 0, 0, make_ssi_param())
         fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
@@ -26,7 +27,6 @@ def parse_snac_ssi(sn_sub, connection):
         sn = snac(SN_TYP_SSI, SN_SSI_ROASTERxREPLY, 0, 0, make_ssi_list(connection))
         fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
         connection.flap.put((fl.make_flap(), 1))
-        pass
     else:
         print "unknown snac(19,%s)" % sn_sub
         
@@ -39,6 +39,15 @@ def make_ssi_param():
     return make_tlv(tl)
 
 def make_ssi_list(connection):
-    res = db.db_check_ssi(connection.uin)
-    return res
-      
+    db.db_check_ssi(connection.uin)
+    rows, udate = db.db_get_ssi(connection.uin)
+#    for row in rows:
+#        struct.pack("!H %ds 4H %s" % (len(row["name"]), len(row["text"])), len(row["name"]), row["name"], row["gid"], row["id"], row["type"], len(row["text"]), row["text"])
+    slist = [struct.pack("!H %ds 4H %ds" % (len(row[3]), len(correct_value(row[4]))), len(row[3]), str(row[3]), row[0], row[1], row[2], len(correct_value(row[4])), correct_value(row[4])) for row in rows]
+    text = "".join(slist)
+    return struct.pack("!BH", 0, len(rows)) + text + struct.pack("!I", udate)
+
+def correct_value(str_):
+    if type(str_) is NoneType:
+        str_ = ''
+    return str_      

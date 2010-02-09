@@ -3,9 +3,11 @@ Created on 31.12.2009
 
 @author: danfocus
 '''
-import snac_families.sn01_generic
-import snac_families.sn19_ssi
-import snac_families.sn23_registration
+#import snac_families.sn01_generic
+#import snac_families.sn19_ssi
+#import snac_families.sn23_registration
+
+from snac_families import *
 
 from tlv_procs import parse_tlv
 from snac import snac
@@ -70,12 +72,14 @@ def parse_snac(str_, connection):
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     #print sn_family, sn_sub
-    if sn_family == SN_TYP_REGISTRATION:
-        snac_families.sn23_registration.parse_snac_registration(sn_sub, connection, str_)
-    elif sn_family == SN_TYP_GENERIC:
-        snac_families.sn01_generic.parse_snac_generic(sn_sub, connection)
+    if sn_family == SN_TYP_GENERIC:
+        sn01_generic.parse_snac(sn_sub, connection)
+    elif sn_family == SN_TYP_LOCATION:
+        sn02_location.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_SSI:
-        snac_families.sn19_ssi.parse_snac_ssi(sn_sub, connection)
+        sn19_ssi.parse_snac(sn_sub, connection)
+    elif sn_family == SN_TYP_REGISTRATION:
+        sn23_registration.parse_snac(sn_sub, connection, str_)
     else:
         print "unknown snac(%s,%s)" % (sn_family, sn_sub)
 

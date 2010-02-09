@@ -4,7 +4,7 @@ Created on 11.01.2010
 @author: danfocus
 '''
 from tlv_c import tlv_c
-from tlv_procs import make_tlvlblock
+from tlv_procs import make_tlv
 
 import MySQLdb
 
@@ -67,12 +67,12 @@ class sql(object):
         return self.db_select_users_where('UNIX_TIMESTAMP(%s)' % sel_, whr_)
     
     def db_check_ssi(self, uin):
-        ssi_changed = False
+        #ssi_changed = False
         self.c.execute("""SELECT COUNT(*) FROM users_ssi_data WHERE gid = 0 AND id = 0 AND type = 1 AND users_uin = %s""", (uin))
         res = self.c.fetchone()
         if (res) and (not res[0]):
-            self.c.execute("""INSERT INTO users_ssi_data VALUES(%s,0,0,1,'',NULL)""", (uin))
-            ssi_changed = True
+            self.c.execute("""INSERT INTO users_ssi_data SET users_uin = %s, gid = 0, id = 0, type = 1""", (uin))
+            #ssi_changed = True
         
 #        self.c.execute("""SELECT COUNT(*) FROM users_ssi_data WHERE gid = 23488 AND id = 0 AND type = 1 AND users_uin = %s""", (uin))
 #        res = self.c.fetchone()
@@ -84,27 +84,31 @@ class sql(object):
         res = self.c.fetchone()
         if (res) and (not res[0]):
             tl = [tlv_c(201,0,"!I"),tlv_c(214,0,"!I")]
-            self.c.execute("""INSERT INTO users_ssi_data VALUES(%s,0,1,5,'',%s)""", (uin, make_tlvlblock(tl)))
-            ssi_changed = True
+            self.c.execute("""INSERT INTO users_ssi_data SET users_uin = %s, gid = 0, id = 1, type = 5, text = %s""", (uin, make_tlv(tl)))
+            #ssi_changed = True
             
         self.c.execute("""SELECT COUNT(*) FROM users_ssi_data WHERE gid = 0 AND id = 2 AND type = 32 AND users_uin = %s""", (uin))
         res = self.c.fetchone()
         if (res) and (not res[0]):
             tl = [tlv_c(348,'\xf5\x28\xfc\x0c\x0b\x80\x48\x53\x83\x34\xb7\x2a\xb9\x2d\x42\x45'),
                   tlv_c(349,'\x40\xe3\x9f\x69\xbf\xe7\xba\x37')]
-            self.c.execute("""INSERT INTO users_ssi_data VALUES(%s,0,2,32,'ICQ-MDIR',%s)""", (uin, make_tlvlblock(tl)))
-            ssi_changed = True
+            self.c.execute("""INSERT INTO users_ssi_data SET users_uin = %s, gid = 0, id = 2, type = 32, name = 'ICQ-MDIR', text = %s""", (uin, make_tlv(tl)))
+            #ssi_changed = True
             
         self.c.execute("""SELECT COUNT(*) FROM users_ssi_data WHERE gid = 0 AND id = 3 AND type = 4 AND users_uin = %s""", (uin))
         res = self.c.fetchone()
         if (res) and (not res[0]):
             tl = [tlv_c(366,2,"!B")]
-            self.c.execute("""INSERT INTO users_ssi_data VALUES(%s,0,3,4,'',%s)""", (uin, make_tlvlblock(tl)))
-            ssi_changed = True
+            self.c.execute("""INSERT INTO users_ssi_data SET users_uin = %s, gid = 0, id = 3, type = 4, text = %s""", (uin, make_tlv(tl)))
+            #ssi_changed = True
             
-        return ssi_changed
+    def db_get_ssi(self, uin):
+        self.c.execute("""SELECT gid, id, type, name, text FROM users_ssi_data WHERE users_uin = %s ORDER BY gid, id, type""", (uin))
+        res = self.c.fetchall()
         
-        
+        self.c.execute("""SELECT MAX(UNIX_TIMESTAMP(udate)) FROM users_ssi_data WHERE users_uin = %s""", (uin))
+        res2 = self.c.fetchone()[0]
+        return res, res2  
             
         
         
