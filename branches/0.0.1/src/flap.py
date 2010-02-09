@@ -19,12 +19,15 @@ class flap(object):
         self.data = data
         self.sequence = sequence
     
-    def parse_hdr(self, string):
-        if ord(string[0]) != FLAP_STARTMARKER:
-            return
-        self.channel = ord(string[1])
-        self.sequence = (ord(string[2]) << 8) + ord(string[3])
-        return (ord(string[4]) << 8) + ord(string[5])
+    def parse_hdr(self, str_):
+        if len(str_) > 5:
+            if ord(str_[0]) != FLAP_STARTMARKER:
+                return False
+            self.channel = ord(str_[1])
+            self.sequence = (ord(str_[2]) << 8) + ord(str_[3])
+            return (ord(str_[4]) << 8) + ord(str_[5])
+        else:
+            return False
     
     def channel(self, channel):
         self.channel = channel

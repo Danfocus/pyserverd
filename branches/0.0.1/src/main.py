@@ -57,6 +57,8 @@ class Connection(object):
         self.uin = None
         self.fileno = None
         self.flap = Queue.Queue()
+        self.caps = None
+        self.away = None
 
 def make_fam_list():
     slist = [struct.pack('!H', x) for x in SUPPORTED_SERVICES.keys()]
@@ -75,11 +77,13 @@ def parse_snac(str_, connection):
     if sn_family == SN_TYP_GENERIC:
         sn01_generic.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_LOCATION:
-        sn02_location.parse_snac(sn_sub, connection)
+        sn02_location.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_BUDDYLIST:
         sn03_buddylist.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_MESSAGING:
         sn04_messaging.parse_snac(sn_sub, connection)
+    elif sn_family == SN_TYP_BOS:
+        sn09_bos.parse_snac(sn_sub,connection)
     elif sn_family == SN_TYP_SSI:
         sn19_ssi.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_REGISTRATION:
@@ -166,6 +170,9 @@ def main():
                         tfl = ""
                         while (qsize):
                             fl, oseq = connections[fileno].flap.get()
+                            if (len(tfl) + len(fl)) > FLAP_MAX_SIZE:
+                                connections[fileno].connection.send(tfl)
+                                tfl = ""
                             tfl += fl
                             connections[fileno].osequence += oseq
                             qsize -= 1

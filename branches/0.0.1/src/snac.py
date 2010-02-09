@@ -17,8 +17,11 @@ class snac(object):
         self.flags = flags
         self.id = id
         self.data = data
-    def parse_hdr(self, string):
-        return (ord(string[0]) << 8) + ord(string[1]), (ord(string[2]) << 8) + ord(string[3])
+    def parse_hdr(self, str_):
+        if len(str_) > 3:
+            return (ord(str_[0]) << 8) + ord(str_[1]), (ord(str_[2]) << 8) + ord(str_[3])
+        else:
+            return False
     def make_snac(self):
         l = len(self.data)
         fmt = '!HHHIH %ds' % l

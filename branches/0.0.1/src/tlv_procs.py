@@ -23,13 +23,19 @@ def make_tlvlblock(list_):
 
 def parse_tlv(str_):
     tlvs = {}
-    data = str_
-    while(len(data)):
-        tlv_id = (ord(data[0]) << 8) + ord(data[1])
-        tlv_len = (ord(data[2]) << 8) + ord(data[3])
-        tlv_end = 4 + tlv_len
-        tlv_data = data[4:tlv_end]
-        tlvs[tlv_id] = tlv_data
-        data = data[tlv_end:]
+    if len(str_):
+        data = str_
+        while(len(data) > 3):
+            tlv_id = (ord(data[0]) << 8) + ord(data[1])
+            tlv_len = (ord(data[2]) << 8) + ord(data[3])
+            tlv_end = 4 + tlv_len
+            if tlv_end <= len(data):
+                tlvs[tlv_id] = data[4:tlv_end]
+                data = data[tlv_end:]
+            else:
+                break
+        if len(data):
+            return False
+    
     return tlvs    
     
