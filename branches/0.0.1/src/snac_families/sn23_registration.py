@@ -5,7 +5,7 @@ Created on 08.02.2010
 '''
 from defines import MISMATCH_PASSWD, SN_TYP_REGISTRATION, FLAP_FRAME_DATA, \
     AIM_MD5_STRING, SN_REG_AUTHxREQUEST, SN_REG_LOGINxREPLY, SN_REG_AUTHxKEY, \
-    SN_REG_AUTHxLOGIN
+    SN_REG_AUTHxLOGIN, FLAP_FRAME_SIGNOFF
 from tlv_c import tlv_c
 from tlv_procs import make_tlv, parse_tlv
 #from flap import flap
@@ -21,6 +21,7 @@ cnf = cnf.cnf
 from db import db
 db = db.db
 
+
 def parse_snac(sn_sub, connection, str_):
     if sn_sub == SN_REG_AUTHxREQUEST:
         challenge = str(random.randint(1000000000, 9999999999))
@@ -28,12 +29,14 @@ def parse_snac(sn_sub, connection, str_):
         if not db.db_set_challenge(tlvc[1], challenge):
             tl = [tlv_c(1, tlvc[1]), tlv_c(4, MISMATCH_PASSWD), tlv_c(8, 5, '!H')]
             sn = snac(SN_TYP_REGISTRATION, SN_REG_LOGINxREPLY, 0, 0, make_tlv(tl))
-            fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
-            connection.flap.put((fl.make_flap_close(), 1))
+            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+            connection.flap.put(fl)
+            fl = flap(FLAP_FRAME_SIGNOFF)
+            connection.flap.put(fl)
             return
         sn = snac(SN_TYP_REGISTRATION, SN_REG_AUTHxKEY, 0, 0, challenge)
-        fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac())
-        connection.flap.put((fl.make_flap(), 1))
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac())
+        connection.flap.put(fl)
     elif sn_sub == SN_REG_AUTHxLOGIN:
         m = hashlib.md5()
         tlvc = parse_tlv(str_[10:])
@@ -56,8 +59,10 @@ def parse_snac(sn_sub, connection, str_):
                 tl = [tlv_c(142, 0, 'B'), tlv_c(1, tlvc[1]), tlv_c(5, cnf.get('general', 'bos_addr')), tlv_c(6, cookie)]
                 a = make_tlv(tl)
                 sn = snac(SN_TYP_REGISTRATION, SN_REG_LOGINxREPLY, 0, 0, a)
-                fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
-                connection.flap.put((fl.make_flap_close(), 1))
+                fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+                connection.flap.put(fl)
+                fl = flap(FLAP_FRAME_SIGNOFF)
+                connection.flap.put(fl)
             else:
                 print "Auth - Fail - wrong password"
         else:
