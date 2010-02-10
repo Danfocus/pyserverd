@@ -3,9 +3,6 @@ Created on 31.12.2009
 
 @author: danfocus
 '''
-#import snac_families.sn01_generic
-#import snac_families.sn19_ssi
-#import snac_families.sn23_registration
 
 from snac_families import *
 
@@ -59,6 +56,7 @@ class Connection(object):
         self.flap = Queue.Queue()
         self.caps = None
         self.away = None
+        self.icbm = {}
 
 def make_fam_list():
     slist = [struct.pack('!H', x) for x in SUPPORTED_SERVICES.keys()]
@@ -75,13 +73,13 @@ def parse_snac(str_, connection):
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     #print sn_family, sn_sub
     if sn_family == SN_TYP_GENERIC:
-        sn01_generic.parse_snac(sn_sub, connection)
+        sn01_generic.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_LOCATION:
         sn02_location.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_BUDDYLIST:
         sn03_buddylist.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_MESSAGING:
-        sn04_messaging.parse_snac(sn_sub, connection)
+        sn04_messaging.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_BOS:
         sn09_bos.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_SSI:
@@ -105,7 +103,7 @@ def main():
     
     try:
         while True:
-            events = _poll.poll(1)
+            events = _poll.poll(cnf.getfloat('general', 'pool_timeout'))
             for fileno, event in events:
                 #print len(connections)
                 if fileno == serversocket.fileno():
@@ -118,29 +116,10 @@ def main():
                     connections[connection.fileno()].osequence = seq
                         
                     #for stupid clients like qip2005
-                    time.sleep(cnf.getint('general', 'new_connection_delay'))
+                    time.sleep(cnf.getfloat('general', 'new_connection_delay'))
                     
                     connections[connection.fileno()].flap.put(fl)
                     _poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
-                elif event & _events.EPOLLOUT:
-                    #print "Ready to out: ", fileno
-                    if not connections[fileno].flap.empty():
-                        qsize = connections[fileno].flap.qsize()
-                        tfl = ""
-                        while (qsize):
-                            fl = connections[fileno].flap.get()
-                            fl.sequence = connections[fileno].osequence
-                            fl = fl.make_flap()
-                            if (len(tfl) + len(fl)) > FLAP_MAX_SIZE:
-                                connections[fileno].connection.send(tfl)
-                                tfl = ""
-                            tfl += fl
-                            connections[fileno].osequence += 1
-                            qsize -= 1
-                        
-                        connections[fileno].connection.send(tfl)
-                    if connections[fileno].flap.empty():
-                        _poll.modify(fileno, _events.EPOLLIN)
                 elif event & _events.EPOLLIN:
                     #print "Ready to in: ", fileno
                     fl = flap()
@@ -182,6 +161,25 @@ def main():
                                     connections[fileno].connection.shutdown(socket.SHUT_RDWR)
                                 except:
                                     pass
+                elif event & _events.EPOLLOUT:
+                    #print "Ready to out: ", fileno
+                    if not connections[fileno].flap.empty():
+                        qsize = connections[fileno].flap.qsize()
+                        tfl = ""
+                        while (qsize):
+                            fl = connections[fileno].flap.get()
+                            fl.sequence = connections[fileno].osequence
+                            fl = fl.make_flap()
+                            if (len(tfl) + len(fl)) > FLAP_MAX_SIZE:
+                                connections[fileno].connection.send(tfl)
+                                tfl = ""
+                            tfl += fl
+                            connections[fileno].osequence += 1
+                            qsize -= 1
+                        
+                        connections[fileno].connection.send(tfl)
+                    if connections[fileno].flap.empty():
+                        _poll.modify(fileno, _events.EPOLLIN)
                 elif event & _events.EPOLLHUP:
                     #print "Close connection: ", fileno
                     _poll.unregister(fileno)

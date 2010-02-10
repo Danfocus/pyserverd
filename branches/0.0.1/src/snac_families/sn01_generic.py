@@ -6,11 +6,8 @@ Created on 08.02.2010
 
 from snac import snac
 from tlv_c import tlv_c
-from tlv_procs import make_tlvblock
-from defines import SN_GEN_REQUESTxVERS, SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, \
-    FLAP_FRAME_DATA, SN_GEN_MOTD, SN_GEN_REQUESTxRATE, SN_GEN_RATExRESPONSE, \
-    SN_GEN_RATExACK, SN_GEN_INFOxREQUEST, SN_GEN_INFOxRESPONSE, \
-    SUPPORTED_SERVICES, RATE_CLASSES, RATE_GROUPS
+from tlv_procs import make_tlvblock, parse_tlv
+from defines import * #@UnusedWildImport
 from flap import flap
 
 import socket
@@ -19,8 +16,10 @@ import struct
 from db import db
 db = db.db
 
-def parse_snac(sn_sub, connection):
-    if sn_sub == SN_GEN_REQUESTxVERS:
+def parse_snac(sn_sub, connection, str_):
+    if sn_sub == SN_GEN_CLIENTxREADY:
+        pass
+    elif sn_sub == SN_GEN_REQUESTxVERS:
         sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
         connection.flap.put(fl)
@@ -33,6 +32,17 @@ def parse_snac(sn_sub, connection):
         connection.flap.put(fl)
     elif sn_sub == SN_GEN_RATExACK:
         pass
+    elif sn_sub == SN_GEN_SETxSTATUS:
+        str_ = str_[10:]
+        tlvs = parse_tlv(str_)
+        if 6 in tlvs:
+            pass
+        if 8 in tlvs:
+            pass
+        if 12 in tlvs:
+            pass
+        if 31 in tlvs:
+            pass
     elif sn_sub == SN_GEN_INFOxREQUEST:
         sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connection, db))
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
