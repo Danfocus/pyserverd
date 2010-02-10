@@ -21,12 +21,12 @@ from tlv_procs import make_tlv
 def parse_snac(sn_sub, connection):
     if sn_sub == SN_SSI_PARAMxREQUEST:
         sn = snac(SN_TYP_SSI, SN_SSI_PARAMxREPLY, 0, 0, make_ssi_param())
-        fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
-        connection.flap.put((fl.make_flap(), 1))
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        connection.flap.put(fl)
     elif sn_sub == SN_SSI_ROASTERxREQUEST:
         sn = snac(SN_TYP_SSI, SN_SSI_ROASTERxREPLY, 0, 0, make_ssi_list(connection))
-        fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
-        connection.flap.put((fl.make_flap(), 1))
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        connection.flap.put(fl)
     else:
         print "unknown snac(19,%s)" % sn_sub
         

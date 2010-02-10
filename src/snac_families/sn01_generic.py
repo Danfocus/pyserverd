@@ -22,20 +22,21 @@ db = db.db
 def parse_snac(sn_sub, connection):
     if sn_sub == SN_GEN_REQUESTxVERS:
         sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
-        fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        connection.flap.put(fl)
         sn = snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_motd())
-        fl2 = flap(FLAP_FRAME_DATA, connection.osequence + 1, sn.make_snac_tlv())
-        connection.flap.put((fl.add_make_flap(fl2), 2))
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        connection.flap.put(fl)
     elif sn_sub == SN_GEN_REQUESTxRATE:
         sn = snac(SN_TYP_GENERIC, SN_GEN_RATExRESPONSE, 0, 0, make_rate_info() + make_rate_groups())
-        fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
-        connection.flap.put((fl.make_flap(), 1))
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        connection.flap.put(fl)
     elif sn_sub == SN_GEN_RATExACK:
         pass
     elif sn_sub == SN_GEN_INFOxREQUEST:
         sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connection, db))
-        fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
-        connection.flap.put((fl.make_flap(), 1))
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        connection.flap.put(fl)
     else:
         print "unknown snac(1,%s)" % sn_sub
         
@@ -52,13 +53,14 @@ def make_rate_info():
     text = "".join(slist)
     return struct.pack("!H", len(RATE_CLASSES)) + text
 
-def make_rate_gr(tpl):
-    slist = [struct.pack("!HH" , x[0], x[1]) for x in tpl]
-    text = "".join(slist)
-    return text
+#def make_rate_gr(tpl):
+#    slist = [struct.pack("!HH" , x[0], x[1]) for x in tpl]
+#    text = "".join(slist)
+#    return text
 
 def make_rate_groups():
-    slist = [struct.pack("!HH %ds" % len(make_rate_gr(y)), x, len(y), make_rate_gr(y)) for x, y in RATE_GROUPS.iteritems()]
+    #slist = [struct.pack("!HH %ds" % len(make_rate_gr(y)), x, len(y), make_rate_gr(y)) for x, y in RATE_GROUPS.iteritems()]
+    slist = [struct.pack("!HH %ds" % len("".join([struct.pack("!HH" , z[0], z[1]) for z in y])), x, len(y), "".join([struct.pack("!HH" , z[0], z[1]) for z in y])) for x, y in RATE_GROUPS.iteritems()]
     text = "".join(slist)
     return text
 

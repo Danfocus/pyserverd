@@ -13,8 +13,8 @@ import struct
 def parse_snac(sn_sub, connection):
     if sn_sub == SN_MSG_PARAMxREQUEST:
         sn = snac(SN_TYP_MESSAGING, SN_MSG_PARAMxRESPONSE, 0, 0, make_msg_param_info())
-        fl = flap(FLAP_FRAME_DATA, connection.osequence, sn.make_snac_tlv())
-        connection.flap.put((fl.make_flap(), 1))
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        connection.flap.put(fl)
     else:
         print "unknown snac(4,%s)" % sn_sub
         
