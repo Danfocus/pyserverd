@@ -18,7 +18,7 @@ def parse_snac(sn_sub, connection, str_):
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
         connection.flap.put(fl)
     elif sn_sub == SN_LOC_SETxUSERINFO:
-        tlvs = parse_tlv(str_[10:])
+        tlvs = parse_tlv(str_)
         if 5 in tlvs:
             connection.caps = tlvs[5]
         if 4 in tlvs:

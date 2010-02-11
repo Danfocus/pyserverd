@@ -17,7 +17,6 @@ def parse_snac(sn_sub, connection, str_):
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
         connection.flap.put(fl)
     elif sn_sub == SN_MSG_ADDxICBMxPARAM:
-        str_ = str_[10:]
         if len(str_) == 16:
             connection.icbm[struct.unpack("!H", str_[:2])[0]] = struct.unpack("!IHHHI", str_[2:]) 
     else:

@@ -18,6 +18,7 @@ db = db.db
 
 def parse_snac(sn_sub, connection, str_):
     if sn_sub == SN_GEN_CLIENTxREADY:
+        # skip 
         pass
     elif sn_sub == SN_GEN_REQUESTxVERS:
         sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
@@ -33,7 +34,6 @@ def parse_snac(sn_sub, connection, str_):
     elif sn_sub == SN_GEN_RATExACK:
         pass
     elif sn_sub == SN_GEN_SETxSTATUS:
-        str_ = str_[10:]
         tlvs = parse_tlv(str_)
         if 6 in tlvs:
             pass
@@ -63,13 +63,7 @@ def make_rate_info():
     text = "".join(slist)
     return struct.pack("!H", len(RATE_CLASSES)) + text
 
-#def make_rate_gr(tpl):
-#    slist = [struct.pack("!HH" , x[0], x[1]) for x in tpl]
-#    text = "".join(slist)
-#    return text
-
 def make_rate_groups():
-    #slist = [struct.pack("!HH %ds" % len(make_rate_gr(y)), x, len(y), make_rate_gr(y)) for x, y in RATE_GROUPS.iteritems()]
     slist = [struct.pack("!HH %ds" % len("".join([struct.pack("!HH" , z[0], z[1]) for z in y])), x, len(y), "".join([struct.pack("!HH" , z[0], z[1]) for z in y])) for x, y in RATE_GROUPS.iteritems()]
     text = "".join(slist)
     return text

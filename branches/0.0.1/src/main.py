@@ -72,6 +72,7 @@ def parse_snac(str_, connection):
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     #print sn_family, sn_sub
+    str_ = str_[10:]
     if sn_family == SN_TYP_GENERIC:
         sn01_generic.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_LOCATION:
@@ -83,12 +84,11 @@ def parse_snac(str_, connection):
     elif sn_family == SN_TYP_BOS:
         sn09_bos.parse_snac(sn_sub, connection)
     elif sn_family == SN_TYP_SSI:
-        sn19_ssi.parse_snac(sn_sub, connection)
+        sn19_ssi.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_REGISTRATION:
         sn23_registration.parse_snac(sn_sub, connection, str_)
     else:
         print "unknown snac(%s,%s)" % (sn_family, sn_sub)
-
 
 def main():
     
@@ -231,7 +231,8 @@ class handlerThread(Thread):
                             _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
                 elif connections[fileno].accepted and fl.channel == FLAP_FRAME_DATA:
                     parse_snac(fl.data, connections[fileno])
-                    _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
+                    if not connections[fileno].flap.empty():
+                        _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
                 elif fl.channel == FLAP_FRAME_SIGNOFF:
                     _poll.modify(fileno, 0)
                     connections[fileno].connection.shutdown(socket.SHUT_RDWR)

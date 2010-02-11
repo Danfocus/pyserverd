@@ -4,7 +4,8 @@ Created on 08.02.2010
 @author: danfocus
 '''
 from defines import SN_SSI_PARAMxREQUEST, SN_SSI_PARAMxREPLY, SN_TYP_SSI, \
-    FLAP_FRAME_DATA, MAX_FOR_ITEMS, SN_SSI_ROASTERxREQUEST, SN_SSI_ROASTERxREPLY
+    FLAP_FRAME_DATA, MAX_FOR_ITEMS, SN_SSI_ROASTERxREQUEST, SN_SSI_ROASTERxREPLY,\
+    SN_SSI_ITEMxUPDATE, SN_SSI_CHANGExACK
 
 from db import db
 from types import NoneType
@@ -18,13 +19,17 @@ from tlv_c import tlv_c
 from tlv_procs import make_tlv
 
 
-def parse_snac(sn_sub, connection):
+def parse_snac(sn_sub, connection, str_):
     if sn_sub == SN_SSI_PARAMxREQUEST:
         sn = snac(SN_TYP_SSI, SN_SSI_PARAMxREPLY, 0, 0, make_ssi_param())
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
         connection.flap.put(fl)
     elif sn_sub == SN_SSI_ROASTERxREQUEST:
         sn = snac(SN_TYP_SSI, SN_SSI_ROASTERxREPLY, 0, 0, make_ssi_list(connection))
+        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        connection.flap.put(fl)
+    elif sn_sub == SN_SSI_ITEMxUPDATE:
+        sn = snac(SN_TYP_SSI, SN_SSI_CHANGExACK, 0, 0, process_ssi_update(connection, str_))
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
         connection.flap.put(fl)
     else:
@@ -52,3 +57,5 @@ def correct_value(str_):
         str_ = ''
     return str_      
 
+def process_ssi_update(connection, str_):
+    pass
