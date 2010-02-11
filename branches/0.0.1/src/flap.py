@@ -7,7 +7,7 @@ from cnf import cnf
 cnf = cnf.cnf
 
 import struct
-from defines import FLAP_STARTMARKER, FLAP_FRAME_SIGNOFF
+from defines import FLAP_STARTMARKER
 
 class flap(object):
     '''
