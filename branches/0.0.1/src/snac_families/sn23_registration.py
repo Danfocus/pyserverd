@@ -18,7 +18,8 @@ import random
 
 cnf = cnf.cnf
 
-from db import db
+from dbconn import dbconn
+db = dbconn()
 db = db.db
 
 

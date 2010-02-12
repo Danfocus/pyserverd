@@ -13,7 +13,8 @@ from flap import flap
 import socket
 import struct
 
-from db import db
+from dbconn import dbconn
+db = dbconn()
 db = db.db
 
 def parse_snac(sn_sub, connection, str_):
