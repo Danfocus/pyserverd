@@ -5,10 +5,11 @@ Created on 08.02.2010
 '''
 from defines import SN_SSI_PARAMxREQUEST, SN_SSI_PARAMxREPLY, SN_TYP_SSI, \
     FLAP_FRAME_DATA, MAX_FOR_ITEMS, SN_SSI_ROASTERxREQUEST, SN_SSI_ROASTERxREPLY,\
-    SN_SSI_ITEMxUPDATE, SN_SSI_CHANGExACK
+    SN_SSI_ITEMxUPDATE
 
-from db import db
+from dbconn import dbconn
 from types import NoneType
+db = dbconn()
 db = db.db
 
 import struct
@@ -29,9 +30,10 @@ def parse_snac(sn_sub, connection, str_):
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
         connection.flap.put(fl)
     elif sn_sub == SN_SSI_ITEMxUPDATE:
-        sn = snac(SN_TYP_SSI, SN_SSI_CHANGExACK, 0, 0, process_ssi_update(connection, str_))
-        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
-        connection.flap.put(fl)
+        #sn = snac(SN_TYP_SSI, SN_SSI_CHANGExACK, 0, 0, process_ssi_update(connection, str_))
+        #fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        #connection.flap.put(fl)
+        pass
     else:
         print "unknown snac(19,%s)" % sn_sub
         
