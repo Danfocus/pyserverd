@@ -14,7 +14,8 @@ from cnf import cnf
 import select
 cnf = cnf.cnf
 
-from db import db
+from dbconn import dbconn
+db = dbconn()
 db = db.db
 
 import socket
@@ -255,6 +256,8 @@ if __name__ == '__main__':
         _events = _select()
         _poll = _select()
         
+    handlerThread().start()
+    handlerThread().start()
     handlerThread().start()
     main()
 
