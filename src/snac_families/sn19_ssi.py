@@ -7,10 +7,10 @@ from defines import SN_SSI_PARAMxREQUEST, SN_SSI_PARAMxREPLY, SN_TYP_SSI, \
     FLAP_FRAME_DATA, MAX_FOR_ITEMS, SN_SSI_ROASTERxREQUEST, SN_SSI_ROASTERxREPLY,\
     SN_SSI_ITEMxUPDATE
 
-from dbconn import dbconn
 from types import NoneType
-db = dbconn()
-db = db.db
+
+from dbconn import dbconn
+db = dbconn().db
 
 import struct
 
