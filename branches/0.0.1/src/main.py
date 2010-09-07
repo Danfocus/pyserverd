@@ -3,6 +3,9 @@ Created on 31.12.2009
 
 @author: danfocus
 '''
+import ConfigParser
+cnf = ConfigParser.ConfigParser()
+cnf.read('pyserverd.conf')
 
 from snac_families import *
 
@@ -10,13 +13,11 @@ from tlv_procs import parse_tlv
 from snac import snac
 from flap import flap
 
-from cnf import cnf
 import select
-cnf = cnf.cnf
+
 
 from dbconn import dbconn
-db = dbconn()
-db = db.db
+db = dbconn().db
 
 import socket
 import struct

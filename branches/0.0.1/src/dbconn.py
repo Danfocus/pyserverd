@@ -3,12 +3,10 @@ Created on 08.02.2010
 
 @author: danfocus
 '''
-from cnf import cnf
 
-cnf = cnf.cnf
-
-
-    
+import ConfigParser
+cnf = ConfigParser.ConfigParser()
+cnf.read('pyserverd.conf')
 
 class dbconn(object):
     '''

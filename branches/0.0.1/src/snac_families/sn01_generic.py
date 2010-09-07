@@ -14,8 +14,7 @@ import socket
 import struct
 
 from dbconn import dbconn
-db = dbconn()
-db = db.db
+db = dbconn().db
 
 def parse_snac(sn_sub, connection, str_):
     if sn_sub == SN_GEN_CLIENTxREADY:
@@ -45,7 +44,7 @@ def parse_snac(sn_sub, connection, str_):
         if 31 in tlvs:
             pass
     elif sn_sub == SN_GEN_INFOxREQUEST:
-        sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connection, db))
+        sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connection))
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
         connection.flap.put(fl)
     else:
@@ -69,7 +68,7 @@ def make_rate_groups():
     text = "".join(slist)
     return text
 
-def make_self_info(connection, db):
+def make_self_info(connection):
     tl = [tlv_c(1, 81, '!H'),
           tlv_c(12, '', '37s'),
           tlv_c(10, socket.inet_aton(connection.address[0]))]

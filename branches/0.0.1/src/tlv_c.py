@@ -9,6 +9,9 @@ class tlv_c(object):
     '''
     classdocs
     '''
+    id = None
+    value = None
+    fmt = None
 
 
     def __init__(self, id, value, fmt=None):

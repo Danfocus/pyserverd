@@ -42,7 +42,10 @@ class sql(object):
     def db_select_users_where(self, sel_, whr_):
         str_ = """SELECT """ + sel_ + """ FROM users WHERE uin = %s"""
         self.c.execute(str_, (whr_))
-        return self.c.fetchone()
+        result = self.c.fetchone()
+        if result:
+            return self.c.fetchone()
+        return (None,None)
     
     def db_update_users_where(self, upd_, val_, whr_):
         str_ = """UPDATE users SET """ + upd_ + """ = """ + val_ + """ WHERE uin = %s"""
