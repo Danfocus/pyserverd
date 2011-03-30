@@ -24,15 +24,15 @@ def parse_snac(sn_sub, connection, str_):
     if sn_sub == SN_SSI_PARAMxREQUEST:
         sn = snac(SN_TYP_SSI, SN_SSI_PARAMxREPLY, 0, 0, make_ssi_param())
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
-        connection.flap.put(fl)
+        connection.flap_put(fl)
     elif sn_sub == SN_SSI_ROASTERxREQUEST:
         sn = snac(SN_TYP_SSI, SN_SSI_ROASTERxREPLY, 0, 0, make_ssi_list(connection))
         fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
-        connection.flap.put(fl)
+        connection.flap_put(fl)
     elif sn_sub == SN_SSI_ITEMxUPDATE:
         #sn = snac(SN_TYP_SSI, SN_SSI_CHANGExACK, 0, 0, process_ssi_update(connection, str_))
         #fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
-        #connection.flap.put(fl)
+        #connection.flap_put(fl)
         pass
     else:
         print "unknown snac(19,%s)" % sn_sub
