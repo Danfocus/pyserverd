@@ -7,6 +7,8 @@ import ConfigParser
 cnf = ConfigParser.ConfigParser()
 cnf.read('pyserverd.conf')
 
+from connection import Connection
+
 from snac_families import *
 
 from tlv_procs import parse_tlv
@@ -14,7 +16,6 @@ from snac import snac
 from flap import flap
 
 import select
-
 
 from dbconn import dbconn
 db = dbconn().db
@@ -34,7 +35,6 @@ q = Queue.Queue()
 
 connections = {}
 
-
 def tohex(str_):
     """
     Use for debug
@@ -45,20 +45,6 @@ def tohex(str_):
     hex_ = map(lambda x: "%.2x" % ord(x), tuple(str_))
     text = " ".join(hex_)
     return hex_, text
-
-class Connection(object):
-    def __init__(self, connection, address):
-        self.connection = connection
-        self.address = address
-        self.isequence = None
-        self.osequence = None
-        self.accepted = None
-        self.uin = None
-        self.fileno = None
-        self.flap = Queue.Queue()
-        self.caps = None
-        self.away = None
-        self.icbm = {}
 
 def make_fam_list():
     slist = [struct.pack('!H', x) for x in SUPPORTED_SERVICES.keys()]
@@ -71,6 +57,9 @@ def make_well_known_url():
     return text
 
 def parse_snac(str_, connection):
+    """
+    Use for parse snac
+    """
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     #print sn_family, sn_sub
