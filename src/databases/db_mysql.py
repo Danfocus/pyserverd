@@ -44,7 +44,7 @@ class sql(object):
         self.c.execute(str_, (whr_))
         result = self.c.fetchone()
         if result:
-            return self.c.fetchone()
+            return result
         return (None,None)
     
     def db_update_users_where(self, upd_, val_, whr_):

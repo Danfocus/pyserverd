@@ -76,7 +76,7 @@ def parse_snac(sn_sub, connection, str_):
         print "unknown snac(23,%s)" % sn_sub
         
 def generate_cookie():
-    slist = map(lambda : chr(random.randint(0, 0xFF)), xrange(256))
+    slist = map(lambda x: chr(random.randint(0, 0xFF)),xrange(256))
     return "".join(slist)
         
 
