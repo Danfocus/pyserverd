@@ -12,7 +12,7 @@ class Connection(object):
         self.address = address
         self.isequence = None
         self.osequence = None
-        self.accepted = None
+        self.status = 0
         self.uin = None
         self.fileno = None
         self.flap = Queue.Queue()
