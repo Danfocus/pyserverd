@@ -21,18 +21,23 @@ def parse_snac(sn_sub, connection, str_):
         # skip 
         pass
     elif sn_sub == SN_GEN_REQUESTxVERS:
-        sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
-        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
-        connection.flap_put(fl)
-        sn = snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_motd())
-        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
-        connection.flap_put(fl)
+        if connection.status == 4:
+            sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
+            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+            connection.flap_put(fl)
+            sn = snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_motd())
+            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+            connection.flap_put(fl)
+            connection.status = 5
     elif sn_sub == SN_GEN_REQUESTxRATE:
-        sn = snac(SN_TYP_GENERIC, SN_GEN_RATExRESPONSE, 0, 0, make_rate_info() + make_rate_groups())
-        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
-        connection.flap_put(fl)
+        if connection.status == 5:
+            sn = snac(SN_TYP_GENERIC, SN_GEN_RATExRESPONSE, 0, 0, make_rate_info() + make_rate_groups())
+            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+            connection.flap_put(fl)
+            connection.status = 6
     elif sn_sub == SN_GEN_RATExACK:
-        pass
+        if connection.status == 6:
+            connection.status = 7
     elif sn_sub == SN_GEN_SETxSTATUS:
         tlvs = parse_tlv(str_)
         if 6 in tlvs:

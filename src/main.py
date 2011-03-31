@@ -18,7 +18,7 @@ from flap import flap
 import select
 
 from dbconn import dbconn
-db = dbconn().db
+#db = dbconn().db
 
 import socket
 import struct
@@ -190,6 +190,8 @@ class handlerThread(Thread):
 
     def run(self):
         
+        db = dbconn().db
+        
         # Have our thread serve "forever":
         while True:
             # Get a client out of the queue
@@ -199,8 +201,8 @@ class handlerThread(Thread):
             if fl != None:
                 #fl.parse_flap(connections[fileno], db)
                 if fl.channel == FLAP_FRAME_SIGNON:
-                    if not connections[fileno].accepted:
-                        connections[fileno].accepted = True
+                    if connections[fileno].status == 0:
+                        connections[fileno].status = 1
 #                            else:
 #                                epoll.modify(fileno, 0)
 #                                connections[fileno].shutdown()
@@ -219,10 +221,12 @@ class handlerThread(Thread):
                             fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
                             connections[fileno].flap_put(fl)
                             _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
-                elif connections[fileno].accepted and fl.channel == FLAP_FRAME_DATA:
-                    parse_snac(fl.data, connections[fileno])
-                    if not connections[fileno].flap_empty():
-                        _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
+                            connections[fileno].status = 4
+                elif connections[fileno].status and fl.channel == FLAP_FRAME_DATA:
+                    if connections[fileno].status > 0:
+                        parse_snac(fl.data, connections[fileno])
+                        if not connections[fileno].flap_empty():
+                            _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
                 elif fl.channel == FLAP_FRAME_SIGNOFF:
                     _poll.modify(fileno, 0)
                     connections[fileno].shutdown()
@@ -245,6 +249,8 @@ if __name__ == '__main__':
         _events = _select()
         _poll = _select()
         
+    handlerThread().start()
+    handlerThread().start()
     handlerThread().start()
     handlerThread().start()
     handlerThread().start()
