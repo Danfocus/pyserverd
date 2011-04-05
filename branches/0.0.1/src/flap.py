@@ -3,10 +3,6 @@ Created on 05.02.2010
 
 @author: danfocus
 '''
-import ConfigParser
-cnf = ConfigParser.ConfigParser()
-cnf.read('pyserverd.conf')
-
 import struct
 from defines import FLAP_STARTMARKER
 
