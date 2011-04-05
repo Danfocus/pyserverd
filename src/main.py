@@ -3,9 +3,8 @@ Created on 31.12.2009
 
 @author: danfocus
 '''
-import ConfigParser
-cnf = ConfigParser.ConfigParser()
-cnf.read('pyserverd.conf')
+from config import Config
+cnf = Config()
 
 from connection import Connection
 
@@ -27,13 +26,15 @@ import random
 import time
 #import logging
 
-from threading import Thread
+from threading import Thread, Condition
 
 from defines import * #@UnusedWildImport
 
 q = Queue.Queue()
 
 connections = {}
+
+cond = Condition()
 
 def tohex(str_):
     """
@@ -63,7 +64,7 @@ def parse_snac(str_, connection):
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     str_ = str_[10:]
-    print "sn(", sn_family, sn_sub, ") :", tohex(str_)[1]
+    print "SN(%02d,%02d): %s" % (sn_family, sn_sub, tohex(str_)[1])
     if sn_family == SN_TYP_GENERIC:
         sn01_generic.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_LOCATION:
@@ -85,8 +86,8 @@ def main():
     
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    serversocket.bind((cnf.get('general', 'serv_addr'), cnf.getint('general', 'serv_port')))
-    serversocket.listen(cnf.getint('general', 'connections_listen'))
+    serversocket.bind((cnf.serv_addr, cnf.serv_port))
+    serversocket.listen(cnf.connections_listen)
     serversocket.setblocking(0)
     serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     
@@ -94,7 +95,7 @@ def main():
     
     try:
         while True:
-            events = _poll.poll(cnf.getfloat('general', 'pool_timeout'))
+            events = _poll.poll(cnf.pool_timeout)
             for fileno, event in events:
                 #print len(connections)
                 if fileno == serversocket.fileno():
@@ -107,10 +108,13 @@ def main():
                     connections[connection.fileno()].osequence = seq
                         
                     #for stupid clients like qip2005
-                    time.sleep(cnf.getfloat('general', 'new_connection_delay'))
+                    time.sleep(cnf.new_connection_delay)
                     
                     connections[connection.fileno()].flap_put(fl)
-                    _poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
+                    cond.acquire()
+                    cond.notifyAll()
+                    cond.release()
+                    #_poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
                 elif event & _events.EPOLLIN:
                     #print "Ready to in: ", fileno
                     fl = flap()
@@ -169,14 +173,17 @@ def main():
                             qsize -= 1
                         
                         connections[fileno].send(tfl)
-                    if connections[fileno].flap_empty():
-                        _poll.modify(fileno, _events.EPOLLIN)
+                    cond.acquire()
+                    cond.notifyAll()
+                    cond.release()
+                    #if connections[fileno].flap_empty():
+                    #    _poll.modify(fileno, _events.EPOLLIN)
                 elif event & _events.EPOLLHUP:
-                    print "Close connection: ", fileno
+                    print "Close connection: %d" % fileno
                     _poll.unregister(fileno)
                     del connections[fileno]
                 elif event & _events.EPOLLERR:
-                    print "Error connection: ", fileno
+                    print "Error connection: %d" % fileno
     finally:
         _poll.unregister(serversocket.fileno())
         _poll.close()
@@ -184,12 +191,9 @@ def main():
     
 # A revised version of our thread class:
 class handlerThread(Thread):
-
-# Note that we do not override Thread's __init__ method.
-# The Queue module makes this not necessary.
-
+    
     def run(self):
-        
+
         db = dbconn().db
         
         # Have our thread serve "forever":
@@ -210,7 +214,7 @@ class handlerThread(Thread):
                     tlvc = parse_tlv(fl.data[4:])
                     if FL_SIGNON_COOKIE in tlvc:
                         #print "Second connect"
-                        a = db.db_get_cookie(tlvc[FL_SIGNON_COOKIE], cnf.getint('general', 'cookie_lifetime'))
+                        a = db.db_get_cookie(tlvc[FL_SIGNON_COOKIE], cnf.cookie_lifetime)
                         #print str(a)
                         if a:
                             connections[fileno].uin = a
@@ -220,17 +224,42 @@ class handlerThread(Thread):
                             sn = snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
                             fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
                             connections[fileno].flap_put(fl)
-                            _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
+                            cond.acquire()
+                            cond.notifyAll()
+                            cond.release()
+                            #_poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
                             connections[fileno].status = 4
                 elif connections[fileno].status and fl.channel == FLAP_FRAME_DATA:
                     if connections[fileno].status > 0:
                         parse_snac(fl.data, connections[fileno])
-                        if not connections[fileno].flap_empty():
-                            _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
+                        cond.acquire()
+                        cond.notifyAll()
+                        cond.release()
+                        #if not connections[fileno].flap_empty():
+                        #    _poll.modify(fileno, _events.EPOLLIN | _events.EPOLLOUT)
                 elif fl.channel == FLAP_FRAME_SIGNOFF:
                     _poll.modify(fileno, 0)
                     connections[fileno].shutdown()
-                
+
+class queueHandler(Thread):
+    
+    def run(self):
+        while True:
+            for a in connections.values():
+                if not a.flap_empty():
+                    try:
+                        _poll.modify(a.fileno, _events.EPOLLIN | _events.EPOLLOUT)
+                    except:
+                        _poll.register(a.fileno, _events.EPOLLIN | _events.EPOLLOUT)
+                else:
+                    try:
+                        _poll.modify(a.fileno, _events.EPOLLIN)
+                    except:
+                        _poll.register(a.fileno, _events.EPOLLIN)
+            
+            cond.acquire()
+            cond.wait()
+            cond.release()
 
 if __name__ == '__main__':
     
@@ -249,8 +278,8 @@ if __name__ == '__main__':
         _events = _select()
         _poll = _select()
         
-    handlerThread().start()
-    handlerThread().start()
+    
+    queueHandler().start()
     handlerThread().start()
     handlerThread().start()
     handlerThread().start()
