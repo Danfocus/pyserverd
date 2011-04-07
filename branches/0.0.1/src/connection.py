@@ -27,7 +27,11 @@ class Connection(object):
         self.connection.shutdown(socket.SHUT_RDWR)
         
     def recv(self, len):
-        return self.connection.recv(len)
+        try:
+            data = self.connection.recv(len)
+        except:
+            data = None
+        return data
     
     def send(self, data):
         self.connection.send(data)        
