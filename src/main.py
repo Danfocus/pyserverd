@@ -47,16 +47,6 @@ def tohex(str_):
     text = " ".join(hex_)
     return hex_, text
 
-def make_fam_list():
-    slist = [struct.pack('!H', x) for x in SUPPORTED_SERVICES.keys()]
-    text = "".join(slist)
-    return text
-
-def make_well_known_url():
-    slist = [struct.pack("!HH %ds" % len(y), x, len(y), y) for x, y in WELL_KNOWN_URL.iteritems()]
-    text = "".join(slist)
-    return text
-
 def parse_snac(str_, connection):
     """
     Use for parse snac
@@ -64,7 +54,7 @@ def parse_snac(str_, connection):
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     str_ = str_[10:]
-    print "SN(%02d,%02d): %s" % (sn_family, sn_sub, tohex(str_)[1])
+    print "Incoming SN(%02d,%02d): %s" % (sn_family, sn_sub, tohex(str_)[1])
     if sn_family == SN_TYP_GENERIC:
         sn01_generic.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_LOCATION:
@@ -218,10 +208,14 @@ class handlerThread(Thread):
                         #print str(a)
                         if a:
                             connections[fileno].uin = a
-                            sn = snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
+                            #sn = snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
+                            sn = snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, 0)
+                            sn.make_fam_list()
                             fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
                             connections[fileno].flap_put(fl)
-                            sn = snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
+                            #sn = snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
+                            sn = snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, 0)
+                            sn.make_well_known_url()
                             fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
                             connections[fileno].flap_put(fl)
                             cond.acquire()
