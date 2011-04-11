@@ -6,7 +6,7 @@ Created on 31.12.2009
 import Queue
 import socket
 
-class Connection(object):
+class connection(object):
     def __init__(self, connection, address):
         self.connection = connection
         self.address = address
