@@ -9,13 +9,10 @@ class tlv_c(object):
     '''
     classdocs
     '''
-    id = None
-    value = None
-    fmt = None
 
-
-    def __init__(self, id, value, fmt=None):
+    def __init__(self, id=None, value=None, fmt=None):
         self.id = id
+        
         if (not fmt) or (fmt[-1:] == 's'):
             self.value = str(value)
         else:
@@ -24,6 +21,7 @@ class tlv_c(object):
             self.value = value
              
         self.fmt = fmt
+        
     def make_tlv_c(self):
         if self.fmt:
             value = struct.pack(self.fmt, self.value)
@@ -31,5 +29,6 @@ class tlv_c(object):
         else:
             l = len(self.value)
             value = struct.pack('%ds' % l, self.value)
+        
         return struct.pack('!HH', self.id, l) + value
         

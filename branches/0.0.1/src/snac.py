@@ -11,13 +11,8 @@ class snac(object):
     '''
     classdocs
     '''
-    family = None
-    subtype = None
-    flags = 0
-    id = 0
-    data = 0
 
-    def __init__(self, family, subtype, flags, id, data):
+    def __init__(self, family=None, subtype=None, flags=0, id=0, data=0):
         self.family = family
         self.subtype = subtype
         self.flags = flags

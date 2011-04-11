@@ -6,7 +6,7 @@ Created on 31.12.2009
 from config import Config
 cnf = Config()
 
-from connection import Connection
+from connection import connection
 
 from snac_families import *
 
@@ -91,7 +91,7 @@ def main():
                 if fileno == serversocket.fileno():
                     connection, address = serversocket.accept()
                     connection.setblocking(0)
-                    connections[connection.fileno()] = Connection(connection, address)
+                    connections[connection.fileno()] = connection(connection, address)
                     connections[connection.fileno()].fileno = connection.fileno()
                     seq = random.randrange(65536)
                     fl = flap(FLAP_FRAME_SIGNON, struct.pack('!i', FLAP_VERSION))
