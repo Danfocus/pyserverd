@@ -89,22 +89,44 @@ def main():
             for fileno, event in events:
                 #print len(connections)
                 if fileno == serversocket.fileno():
-                    connection, address = serversocket.accept()
-                    connection.setblocking(0)
-                    connections[connection.fileno()] = connection(connection, address)
-                    connections[connection.fileno()].fileno = connection.fileno()
-                    seq = random.randrange(65536)
+                    conn, address = serversocket.accept()
+                    conn.setblocking(0)
+                    connections[conn.fileno()] = connection(conn, address)
+                    connections[conn.fileno()].fileno = conn.fileno()
                     fl = flap(FLAP_FRAME_SIGNON, struct.pack('!i', FLAP_VERSION))
-                    connections[connection.fileno()].osequence = seq
+                    connections[conn.fileno()].osequence = random.randrange(65536)
                         
                     #for stupid clients like qip2005
                     time.sleep(cnf.new_connection_delay)
                     
-                    connections[connection.fileno()].flap_put(fl)
+                    connections[conn.fileno()].flap_put(fl)
                     cond.acquire()
                     cond.notifyAll()
                     cond.release()
-                    #_poll.register(connection.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
+                    #_poll.register(conn.fileno(), _events.EPOLLIN | _events.EPOLLOUT)
+                elif event & _events.EPOLLOUT:
+                    #print "Ready to out: ", fileno
+                    if not connections[fileno].flap_empty():
+                        qsize = connections[fileno].flap_qsize()
+                        tfl = ""
+                        while (qsize):
+                            fl = connections[fileno].flap_get()
+                            fl.sequence = connections[fileno].osequence
+                            print "OUT", fl
+                            fl = fl.make_flap()
+                            if (len(tfl) + len(fl)) > FLAP_MAX_SIZE:
+                                connections[fileno].send(tfl)
+                                tfl = ""
+                            tfl += fl
+                            connections[fileno].osequence += 1
+                            qsize -= 1
+                        
+                        connections[fileno].send(tfl)
+                    cond.acquire()
+                    cond.notifyAll()
+                    cond.release()
+                    #if connections[fileno].flap_empty():
+                    #    _poll.modify(fileno, _events.EPOLLIN)
                 elif event & _events.EPOLLIN:
                     #print "Ready to in: ", fileno
                     fl = flap()
@@ -124,8 +146,8 @@ def main():
                                         connections[fileno].isequence = fl.sequence + 1
                                     else:
                                         connections[fileno].isequence += 1
-                                    fl.data = connections[fileno].recv(a)
-                                    if len(fl.data) == a:
+                                    fl.content = connections[fileno].recv(a)
+                                    if len(fl.content) == a:
                                         q.put((fl, fileno))
                                     else:
                                         _poll.modify(fileno, 0)
@@ -146,28 +168,6 @@ def main():
                                     connections[fileno].shutdown()
                                 except:
                                     pass
-                elif event & _events.EPOLLOUT:
-                    #print "Ready to out: ", fileno
-                    if not connections[fileno].flap_empty():
-                        qsize = connections[fileno].flap_qsize()
-                        tfl = ""
-                        while (qsize):
-                            fl = connections[fileno].flap_get()
-                            fl.sequence = connections[fileno].osequence
-                            fl = fl.make_flap()
-                            if (len(tfl) + len(fl)) > FLAP_MAX_SIZE:
-                                connections[fileno].send(tfl)
-                                tfl = ""
-                            tfl += fl
-                            connections[fileno].osequence += 1
-                            qsize -= 1
-                        
-                        connections[fileno].send(tfl)
-                    cond.acquire()
-                    cond.notifyAll()
-                    cond.release()
-                    #if connections[fileno].flap_empty():
-                    #    _poll.modify(fileno, _events.EPOLLIN)
                 elif event & _events.EPOLLHUP:
                     print "Close connection: %d" % fileno
                     _poll.unregister(fileno)
@@ -200,8 +200,8 @@ class handlerThread(Thread):
 #                            else:
 #                                epoll.modify(fileno, 0)
 #                                connections[fileno].shutdown()
-                    #print "New_connect tail:", tohex(fl.data[4:])
-                    tlvc = parse_tlv(fl.data[4:])
+                    #print "New_connect tail:", tohex(fl.content[4:])
+                    tlvc = parse_tlv(fl.content[4:])
                     if FL_SIGNON_COOKIE in tlvc:
                         #print "Second connect"
                         a = db.db_get_cookie(tlvc[FL_SIGNON_COOKIE], cnf.cookie_lifetime)
@@ -211,12 +211,12 @@ class handlerThread(Thread):
                             #sn = snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, make_fam_list())
                             sn = snac(SN_TYP_GENERIC, SN_GEN_SERVERxFAMILIES, 0, 0, 0)
                             sn.make_fam_list()
-                            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+                            fl = flap(FLAP_FRAME_DATA, sn)
                             connections[fileno].flap_put(fl)
                             #sn = snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, make_well_known_url())
                             sn = snac(SN_TYP_GENERIC, SN_GEN_WELLxKNOWNxURLS, 0, 0, 0)
                             sn.make_well_known_url()
-                            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+                            fl = flap(FLAP_FRAME_DATA, sn)
                             connections[fileno].flap_put(fl)
                             cond.acquire()
                             cond.notifyAll()
@@ -225,7 +225,7 @@ class handlerThread(Thread):
                             connections[fileno].status = 4
                 elif connections[fileno].status and fl.channel == FLAP_FRAME_DATA:
                     if connections[fileno].status > 0:
-                        parse_snac(fl.data, connections[fileno])
+                        parse_snac(fl.content, connections[fileno])
                         cond.acquire()
                         cond.notifyAll()
                         cond.release()

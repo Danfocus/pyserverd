@@ -23,16 +23,16 @@ def parse_snac(sn_sub, connection, str_):
     elif sn_sub == SN_GEN_REQUESTxVERS:
         if connection.status == 4:
             sn = snac(SN_TYP_GENERIC, SN_GEN_VERSxRESPONSE, 0, 0, make_fam_vers_list())
-            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+            fl = flap(FLAP_FRAME_DATA, sn)
             connection.flap_put(fl)
             sn = snac(SN_TYP_GENERIC, SN_GEN_MOTD, 0, 0, make_motd())
-            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+            fl = flap(FLAP_FRAME_DATA, sn)
             connection.flap_put(fl)
             connection.status = 5
     elif sn_sub == SN_GEN_REQUESTxRATE:
         if connection.status == 5:
             sn = snac(SN_TYP_GENERIC, SN_GEN_RATExRESPONSE, 0, 0, make_rate_info() + make_rate_groups())
-            fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+            fl = flap(FLAP_FRAME_DATA, sn)
             connection.flap_put(fl)
             connection.status = 6
     elif sn_sub == SN_GEN_RATExACK:
@@ -50,28 +50,25 @@ def parse_snac(sn_sub, connection, str_):
             pass
     elif sn_sub == SN_GEN_INFOxREQUEST:
         sn = snac(SN_TYP_GENERIC, SN_GEN_INFOxRESPONSE, 0, 0, make_self_info(connection))
-        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        fl = flap(FLAP_FRAME_DATA, sn)
         connection.flap_put(fl)
     else:
         print "unknown snac(1,%s)" % sn_sub
         
 def make_fam_vers_list():
     slist = [struct.pack('!HH', x, y) for x, y in SUPPORTED_SERVICES.iteritems()]
-    text = "".join(slist)
-    return text
+    return "".join(slist)
 
 def make_motd():
     return struct.pack("!HHHHHHH" , 5, 2, 2, 30, 3, 2, 1200)
 
 def make_rate_info():
     slist = [struct.pack("!HIIIIIIIIB", x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9]) for x in RATE_CLASSES]
-    text = "".join(slist)
-    return struct.pack("!H", len(RATE_CLASSES)) + text
+    return struct.pack("!H", len(RATE_CLASSES)) + "".join(slist)
 
 def make_rate_groups():
     slist = [struct.pack("!HH %ds" % len("".join([struct.pack("!HH" , z[0], z[1]) for z in y])), x, len(y), "".join([struct.pack("!HH" , z[0], z[1]) for z in y])) for x, y in RATE_GROUPS.iteritems()]
-    text = "".join(slist)
-    return text
+    return "".join(slist)
 
 def make_self_info(connection):
     tl = [tlv_c(1, 81, '!H'),

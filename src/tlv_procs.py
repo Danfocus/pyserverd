@@ -7,8 +7,7 @@ import struct
 
 def make_tlv(list_):
     slist = [x.make_tlv_c() for x in list_]
-    text = "".join(slist)
-    return text
+    return "".join(slist)
 
 def make_tlvblock(list_):
     text = make_tlv(list_)

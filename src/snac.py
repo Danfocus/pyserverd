@@ -12,12 +12,13 @@ class snac(object):
     classdocs
     '''
 
-    def __init__(self, family=None, subtype=None, flags=0, id=0, data=0):
+    def __init__(self, family=None, subtype=None, flags=0, id=0, data=0, has_len=False):
         self.family = family
         self.subtype = subtype
         self.flags = flags
         self.id = id
         self.data = data
+        self.has_len=has_len
     
     def parse_hdr(self, str_):
         if len(str_) > 3:
@@ -27,21 +28,24 @@ class snac(object):
     
     def make_snac(self):
         l = len(self.data)
-        fmt = '!HHHIH %ds' % l
-        return struct.pack(fmt, self.family, self.subtype, self.flags, self.id, l, self.data)
-    
-    def make_snac_tlv(self):
-        l = len(self.data)
+        if self.has_len:
+            fmt = '!HHHIH %ds' % l
+            return struct.pack(fmt, self.family, self.subtype, self.flags, self.id, l, self.data)
         fmt = '!HHHI %ds' % l
         return struct.pack(fmt, self.family, self.subtype, self.flags, self.id, self.data)
     
     def make_well_known_url(self):
         slist = [struct.pack("!HH %ds" % len(y), x, len(y), y) for x, y in WELL_KNOWN_URL.iteritems()]
-        text = "".join(slist)
-        self.data = text
+        self.data = "".join(slist)
         
     def make_fam_list(self):
         slist = [struct.pack('!H', x) for x in SUPPORTED_SERVICES.keys()]
-        text = "".join(slist)
-        self.data = text
+        self.data = "".join(slist)
+        
+    def hex_data(self):
+        hex = map(lambda x: "%.2x" % ord(x), tuple(self.data))
+        return " ".join(hex)
+        
+    def __repr__(self):
+        return "SNAC (%02d,%02d) :%s" % (self.family, self.subtype, self.hex_data())
         
