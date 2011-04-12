@@ -13,7 +13,7 @@ from tlv_c import tlv_c
 def parse_snac(sn_sub, connection):
     if sn_sub == SN_BOS_RIGHTSxREQUEST:
         sn = snac(SN_TYP_BOS, SN_BOS_RIGHTSxRESPONSE, 0, 0, make_bos_rights_info())
-        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        fl = flap(FLAP_FRAME_DATA, sn)
         connection.flap_put(fl)
     else:
         print "unknown snac(9,%s)" % sn_sub

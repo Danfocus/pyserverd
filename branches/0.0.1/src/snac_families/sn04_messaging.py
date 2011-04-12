@@ -14,7 +14,7 @@ def parse_snac(sn_sub, connection, str_):
     if sn_sub == SN_MSG_PARAMxREQUEST:
         sn = snac(SN_TYP_MESSAGING, SN_MSG_PARAMxRESPONSE, 0, 0, make_msg_param_info())
         connection.icbm[4] = ICBM_PARAMS.get(4)
-        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+        fl = flap(FLAP_FRAME_DATA, sn)
         connection.flap_put(fl)
     elif sn_sub == SN_MSG_ADDxICBMxPARAM:
         if len(str_) == 16:

@@ -30,14 +30,14 @@ def parse_snac(sn_sub, connection, str_):
             if db.db_select_users_where("uin", tlvc[1])[0]:
                 challenge = str(random.randint(1000000000, 9999999999))
                 db.db_set_challenge(tlvc[1], challenge)
-                sn = snac(SN_TYP_REGISTRATION, SN_REG_AUTHxKEY, 0, 0, challenge)
-                fl = flap(FLAP_FRAME_DATA, sn.make_snac())
+                sn = snac(SN_TYP_REGISTRATION, SN_REG_AUTHxKEY, 0, 0, challenge, True)
+                fl = flap(FLAP_FRAME_DATA, sn)
                 connection.flap_put(fl)
                 connection.status = 2
             else:
                 tl = [tlv_c(1, tlvc[1]), tlv_c(4, MISMATCH_PASSWD), tlv_c(8, 5, '!H')]
                 sn = snac(SN_TYP_REGISTRATION, SN_REG_LOGINxREPLY, 0, 0, make_tlv(tl))
-                fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+                fl = flap(FLAP_FRAME_DATA, sn)
                 connection.flap_put(fl)
                 fl = flap(FLAP_FRAME_SIGNOFF)
                 connection.flap_put(fl)
@@ -66,7 +66,7 @@ def parse_snac(sn_sub, connection, str_):
                         tl = [tlv_c(142, 0, 'B'), tlv_c(1, tlvc[1]), tlv_c(5, cnf.bos_addr), tlv_c(6, cookie)]
                         a = make_tlv(tl)
                         sn = snac(SN_TYP_REGISTRATION, SN_REG_LOGINxREPLY, 0, 0, a)
-                        fl = flap(FLAP_FRAME_DATA, sn.make_snac_tlv())
+                        fl = flap(FLAP_FRAME_DATA, sn)
                         connection.flap_put(fl)
                         fl = flap(FLAP_FRAME_SIGNOFF)
                         connection.flap_put(fl)

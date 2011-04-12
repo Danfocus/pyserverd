@@ -6,7 +6,7 @@ Created on 11.01.2010
 from tlv_c import tlv_c
 from tlv_procs import make_tlv
 
-import MySQLdb
+import MySQLdb #@UnresolvedImport
 
 class sql(object):
     '''
@@ -23,7 +23,7 @@ class sql(object):
     
     def db_get_challenge(self, uin, db_cookie_lifetime):
         self.db_check_challenge_expired(db_cookie_lifetime)
-        self.c.execute("""SELECT challenge FROM users_challenges WHERE users_uin = %s""", (uin))
+        self.c.execute("""SELECT challenge FROM users_challenges WHERE users_uin = %s LIMIT 1""", (uin))
         challenge = self.c.fetchone()
             #uin = self.c.fetchone()[0]
         if challenge:
@@ -40,7 +40,7 @@ class sql(object):
         pass
     
     def db_select_users_where(self, sel_, whr_):
-        str_ = """SELECT """ + sel_ + """ FROM users WHERE uin = %s"""
+        str_ = """SELECT """ + sel_ + """ FROM users WHERE uin = %s LIMIT 1"""
         self.c.execute(str_, (whr_))
         result = self.c.fetchone()
         if result:
@@ -54,7 +54,7 @@ class sql(object):
     
     def db_get_cookie(self, cookie, db_cookie_lifetime):
         self.db_check_cookie_expired(db_cookie_lifetime)
-        self.c.execute("""SELECT users_uin FROM users_cookies WHERE cookie = %s""", (cookie))
+        self.c.execute("""SELECT users_uin FROM users_cookies WHERE cookie = %s LIMIT 1""", (cookie))
         uin = self.c.fetchone()
             #uin = self.c.fetchone()[0]
         if uin:
