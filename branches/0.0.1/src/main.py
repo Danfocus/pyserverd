@@ -3,6 +3,9 @@ Created on 31.12.2009
 
 @author: danfocus
 '''
+#import cProfile
+#import pstats
+
 from config import Config
 cnf = Config()
 
@@ -26,6 +29,8 @@ import random
 import time
 #import logging
 
+import common
+
 from threading import Thread, Condition
 
 from defines import * #@UnusedWildImport
@@ -36,16 +41,6 @@ connections = {}
 
 cond = Condition()
 
-def tohex(str_):
-    """
-    Use for debug
-        str->hex
-        return ([hex], str)
-    """
-
-    hex_ = map(lambda x: "%.2x" % ord(x), tuple(str_))
-    text = " ".join(hex_)
-    return hex_, text
 
 def parse_snac(str_, connection):
     """
@@ -54,7 +49,7 @@ def parse_snac(str_, connection):
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     str_ = str_[10:]
-    print "Incoming SN(%02d,%02d): %s" % (sn_family, sn_sub, tohex(str_)[1])
+    print "------\nIncoming SN(%02d,%02d):\n%s" % (sn_family, sn_sub, common.hex_data_f(str_))
     if sn_family == SN_TYP_GENERIC:
         sn01_generic.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_LOCATION:
@@ -279,4 +274,8 @@ if __name__ == '__main__':
     handlerThread().start()
     main()
 
-
+    #cProfile.run('main()', 'main_prof')
+    #stats = pstats.Stats('main_prof')
+    #stats.strip_dirs()
+    #stats.sort_stats('time')
+    #stats.print_stats(5)

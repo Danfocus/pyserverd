@@ -10,8 +10,8 @@ class tlv_c(object):
     classdocs
     '''
 
-    def __init__(self, id=None, value=None, fmt=None):
-        self.id = id
+    def __init__(self, idt=None, value=None, fmt=None):
+        self.id = idt
         
         if (not fmt) or (fmt[-1:] == 's'):
             self.value = str(value)
