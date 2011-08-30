@@ -7,18 +7,20 @@ Created on 05.02.2010
 import struct
 from defines import WELL_KNOWN_URL, SUPPORTED_SERVICES
 
+import common
+
 class snac(object):
     '''
     classdocs
     '''
 
-    def __init__(self, family=None, subtype=None, flags=0, id=0, data=0, has_len=False):
+    def __init__(self, family=None, subtype=None, flags=0, ids=0, data=0, has_len=False):
         self.family = family
         self.subtype = subtype
         self.flags = flags
-        self.id = id
+        self.id = ids
         self.data = data
-        self.has_len=has_len
+        self.has_len = has_len
     
     def parse_hdr(self, str_):
         if len(str_) > 3:
@@ -42,10 +44,7 @@ class snac(object):
         slist = [struct.pack('!H', x) for x in SUPPORTED_SERVICES.keys()]
         self.data = "".join(slist)
         
-    def hex_data(self):
-        hex = map(lambda x: "%.2x" % ord(x), tuple(self.data))
-        return " ".join(hex)
-        
     def __repr__(self):
-        return "SNAC (%02d,%02d) :%s" % (self.family, self.subtype, self.hex_data())
+        return " SNAC (%02d,%02d):\n%s" % (self.family, self.subtype, common.hex_data_f(self.data))
         
+

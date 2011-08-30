@@ -26,9 +26,9 @@ class connection(object):
     def shutdown(self):
         self.connection.shutdown(socket.SHUT_RDWR)
         
-    def recv(self, len):
+    def recv(self, lenc):
         try:
-            data = self.connection.recv(len)
+            data = self.connection.recv(lenc)
         except:
             data = None
         return data

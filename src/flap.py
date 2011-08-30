@@ -7,6 +7,8 @@ import struct
 from defines import FLAP_STARTMARKER
 from snac import snac
 
+import common
+
 class flap(object):
     '''
     classdocs
@@ -28,24 +30,21 @@ class flap(object):
             return False
     
     def make_flap(self):
-        data=''
+        data = ''
         if self.content:
             if isinstance(self.content, snac):
-                data=self.content.make_snac()
+                data = self.content.make_snac()
             else:
-                data=self.content
+                data = self.content
         l = len(data)
         fmt = '!BBHH %ds' % l
         return struct.pack(fmt, FLAP_STARTMARKER, self.channel, self.sequence, l, data)
     
-    def hex_content(self):
-        hex_ = map(lambda x: "%.2x" % ord(x), tuple(self.content))
-        return " ".join(hex_)
-    
     def __repr__(self):
         if isinstance(self.content, snac):
-            data=self.content
+            data = self.content
         else:
-            data=self.hex_content()
-        return "FLAP CH(%d): %s" % (self.channel, data)
+            data = common.hex_data_f(self.content)
+        return "------\nFLAP CH(%d): %s" % (self.channel, data)
     
+
