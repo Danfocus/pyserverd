@@ -17,7 +17,7 @@ formatter = logging.Formatter('%(asctime)s - %(clientip)s %(dirn)s\n%(message)s\
 deflogger = logging.getLogger('Logger')
 deflogger.setLevel(logging.INFO)
 if cnf.logfile_enable:
-    deffh = logging.handlers.RotatingFileHandler(cnf.logfile, maxBytes=cnf.logfile_size, backupCount=5)
+    deffh = logging.handlers.RotatingFileHandler(cnf.logfile, maxBytes=cnf.logfile_size, backupCount=cnf.logfile_count)
     deffh.setFormatter(formatter)
 else:
     deffh = logging.NullHandler()
@@ -26,7 +26,7 @@ deflogger.addHandler(deffh)
 debuglogger = logging.getLogger('Debug_logger')
 debuglogger.setLevel(logging.DEBUG)
 if cnf.debuglog_enable:
-    debfh = logging.handlers.RotatingFileHandler(cnf.debuglog, maxBytes=cnf.debuglog_size, backupCount=5)
+    debfh = logging.handlers.RotatingFileHandler(cnf.debuglog, maxBytes=cnf.debuglog_size, backupCount=cnf.debuglog_count)
     debfh.setFormatter(formatter)
 else:
     debfh = logging.NullHandler()
