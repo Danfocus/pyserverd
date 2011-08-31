@@ -91,3 +91,6 @@ class _kqueue(object):
             if kevent.flags & select.KQ_EV_ERROR: #@UndefinedVariable
                 events[fd] = events.get(fd, 0) | self.ERROR
         return events.items()
+    
+    def close(self):
+        pass

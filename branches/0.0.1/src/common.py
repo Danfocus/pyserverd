@@ -14,6 +14,6 @@ def hex_data_f(hexdata):
     while len(hexst) > 0:
         hexs = hexs + hexst[:47] + "\n"
         hexst = hexst[48:] 
-    return hexs[:-1]
+    return hexs[:-1] or "Empty"
 
         

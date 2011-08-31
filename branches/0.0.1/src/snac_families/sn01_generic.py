@@ -4,6 +4,9 @@ Created on 08.02.2010
 @author: danfocus
 '''
 
+import logging
+deflogger = logging.getLogger('Logger')
+
 from snac import snac
 from tlv_c import tlv_c
 from tlv_procs import make_tlvblock, parse_tlv
@@ -53,7 +56,7 @@ def parse_snac(sn_sub, connection, str_):
         fl = flap(FLAP_FRAME_DATA, sn)
         connection.flap_put(fl)
     else:
-        print "unknown snac(1,%s)" % sn_sub
+        deflogger.info("UNKNOWN SNAC(01,%02d)" % sn_sub, extra={'clientip': connection.address[0], 'dirn': '<<--IN--'})
         
 def make_fam_vers_list():
     slist = [struct.pack('!HH', x, y) for x, y in SUPPORTED_SERVICES.iteritems()]

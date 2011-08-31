@@ -45,6 +45,6 @@ class snac(object):
         self.data = "".join(slist)
         
     def __repr__(self):
-        return " SNAC (%02d,%02d):\n%s" % (self.family, self.subtype, common.hex_data_f(self.data))
+        return "SNAC(%02d,%02d):\n%s" % (self.family, self.subtype, common.hex_data_f(self.data))
         
 

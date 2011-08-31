@@ -23,6 +23,14 @@ class Config(object):
     db_name = None
     db_use_unicode = None
     db_charset = None
+    logfile = None
+    logfile_size = None
+    logfile_enable = None
+    logfile_count = None
+    debuglog = None
+    debuglog_size = None
+    debuglog_enable = None
+    debuglog_count = None
     
     def __init__(self):
         self.read()
@@ -44,6 +52,14 @@ class Config(object):
         self.db_name = cnf.get('db', 'db_name')
         self.db_use_unicode = cnf.getboolean('db', 'db_use_unicode')
         self.db_charset = cnf.get('db', 'db_charset')
+        self.logfile = cnf.get('log', 'logfile')
+        self.logfile_size = cnf.getint('log', 'logfile_size')
+        self.logfile_enable = cnf.getboolean('log', 'logfile_enable')
+        self.logfile_count = cnf.getint('log', 'logfile_count')
+        self.debuglog = cnf.get('log', 'debuglog')
+        self.debuglog_size = cnf.getint('log', 'debuglog_size')
+        self.debuglog_enable = cnf.getboolean('log', 'debuglog_enable')
+        self.debuglog_count = cnf.getint('log', 'debuglog_count')
     
             
 
