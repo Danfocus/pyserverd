@@ -3,6 +3,10 @@ Created on 08.02.2010
 
 @author: danfocus
 '''
+
+import logging
+deflogger = logging.getLogger('Logger')
+
 from defines import SN_SSI_PARAMxREQUEST, SN_SSI_PARAMxREPLY, SN_TYP_SSI, \
     FLAP_FRAME_DATA, MAX_FOR_ITEMS, SN_SSI_ROASTERxREQUEST, SN_SSI_ROASTERxREPLY,\
     SN_SSI_ITEMxUPDATE
@@ -35,7 +39,7 @@ def parse_snac(sn_sub, connection, str_):
         #connection.flap_put(fl)
         pass
     else:
-        print "unknown snac(19,%s)" % sn_sub
+        deflogger.info("UNKNOWN SNAC(19,%02d)" % sn_sub, extra={'clientip': connection.address[0], 'dirn': '<<--IN--'})
         
 def make_ssi_param():
     slist = [struct.pack("!H" , x) for x in MAX_FOR_ITEMS]

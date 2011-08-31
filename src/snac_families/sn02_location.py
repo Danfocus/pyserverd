@@ -3,6 +3,10 @@ Created on 10.02.2010
 
 @author: User
 '''
+
+import logging
+deflogger = logging.getLogger('Logger')
+
 from defines import SN_LOC_RIGHTSxREQUEST, SN_TYP_LOCATION, \
     SN_LOC_RIGHTSxRESPONSE, FLAP_FRAME_DATA, LOC_RIGHTS_INFO, \
     SN_LOC_SETxUSERINFO
@@ -24,7 +28,7 @@ def parse_snac(sn_sub, connection, str_):
         if 4 in tlvs:
             connection.away = tlvs[4]
     else:
-        print "unknown snac(2,%s)" % sn_sub
+        deflogger.info("UNKNOWN SNAC(02,%02d)" % sn_sub, extra={'clientip': connection.address[0], 'dirn': '<<--IN--'})
         
 def make_loc_rights_response():
     tl = [tlv_c(x, y, "!H") for x, y in LOC_RIGHTS_INFO.iteritems()]

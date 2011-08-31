@@ -45,6 +45,6 @@ class flap(object):
             data = self.content
         else:
             data = common.hex_data_f(self.content)
-        return "------\nFLAP CH(%d): %s" % (self.channel, data)
+        return "FLAP CH(%d): %s" % (self.channel, data)
     
 

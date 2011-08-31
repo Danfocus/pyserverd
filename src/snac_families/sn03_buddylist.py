@@ -3,6 +3,10 @@ Created on 10.02.2010
 
 @author: User
 '''
+
+import logging
+deflogger = logging.getLogger('Logger')
+
 from defines import SN_BLM_RIGHTSxREQUEST, SN_TYP_BUDDYLIST, \
     SN_BLM_RIGHTSxRESPONSE, FLAP_FRAME_DATA, BLM_RIGHTS_INFO
 
@@ -17,7 +21,7 @@ def parse_snac(sn_sub, connection):
         fl = flap(FLAP_FRAME_DATA, sn)
         connection.flap_put(fl)
     else:
-        print "unknown snac(03,%s)" % sn_sub
+        deflogger.info("UNKNOWN SNAC(03,%02d)" % sn_sub, extra={'clientip': connection.address[0], 'dirn': '<<--IN--'})
         
 def make_blm_rights_response():
     tl = [tlv_c(x, y, "!H") for x, y in BLM_RIGHTS_INFO.iteritems()]

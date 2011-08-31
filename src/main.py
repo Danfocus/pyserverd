@@ -9,6 +9,29 @@ Created on 31.12.2009
 from config import Config
 cnf = Config()
 
+#import logging
+import logging.handlers
+
+formatter = logging.Formatter('%(asctime)s - %(clientip)s %(dirn)s\n%(message)s\n')
+
+deflogger = logging.getLogger('Logger')
+deflogger.setLevel(logging.INFO)
+if cnf.logfile_enable:
+    deffh = logging.handlers.RotatingFileHandler(cnf.logfile, maxBytes=cnf.logfile_size, backupCount=5)
+    deffh.setFormatter(formatter)
+else:
+    deffh = logging.NullHandler()
+deflogger.addHandler(deffh)
+
+debuglogger = logging.getLogger('Debug_logger')
+debuglogger.setLevel(logging.DEBUG)
+if cnf.debuglog_enable:
+    debfh = logging.handlers.RotatingFileHandler(cnf.debuglog, maxBytes=cnf.debuglog_size, backupCount=5)
+    debfh.setFormatter(formatter)
+else:
+    debfh = logging.NullHandler()
+debuglogger.addHandler(debfh)
+
 from connection import connection
 
 from snac_families import *
@@ -27,7 +50,6 @@ import struct
 import Queue
 import random
 import time
-#import logging
 
 import common
 
@@ -49,7 +71,7 @@ def parse_snac(str_, connection):
     sn_family = (ord(str_[0]) << 8) + ord(str_[1])
     sn_sub = (ord(str_[2]) << 8) + ord(str_[3])
     str_ = str_[10:]
-    print "------\nIncoming SN(%02d,%02d):\n%s" % (sn_family, sn_sub, common.hex_data_f(str_))
+    debuglogger.debug("FLAP CH(2): SNAC(%02d,%02d):\n%s" % (sn_family, sn_sub, common.hex_data_f(str_)), extra={'clientip': connection.address[0], 'dirn': '<<--IN--'})
     if sn_family == SN_TYP_GENERIC:
         sn01_generic.parse_snac(sn_sub, connection, str_)
     elif sn_family == SN_TYP_LOCATION:
@@ -65,7 +87,8 @@ def parse_snac(str_, connection):
     elif sn_family == SN_TYP_REGISTRATION:
         sn23_registration.parse_snac(sn_sub, connection, str_)
     else:
-        print "unknown snac(%s,%s)" % (sn_family, sn_sub)
+        deflogger.warning("UNKNOWN SNAC(%02d,%02d)" % (sn_family, sn_sub), extra={'clientip': connection.address[0], 'dirn': '<<--IN--'})
+        debuglogger.warning("UNKNOWN SNAC(%02d,%02d)" % (sn_family, sn_sub), extra={'clientip': connection.address[0], 'dirn': '<<--IN--'})
 
 def main():
     
@@ -107,7 +130,7 @@ def main():
                         while (qsize):
                             fl = connections[fileno].flap_get()
                             fl.sequence = connections[fileno].osequence
-                            print "OUT", fl
+                            debuglogger.debug("%s" % fl, extra={'clientip': connections[fileno].address[0], 'dirn': '--OUT-->>'})
                             fl = fl.make_flap()
                             if (len(tfl) + len(fl)) > FLAP_MAX_SIZE:
                                 connections[fileno].send(tfl)
@@ -164,11 +187,11 @@ def main():
                                 except:
                                     pass
                 elif event & _events.EPOLLHUP:
-                    print "Close connection: %d" % fileno
+                    deflogger.info("Close connection: %d" % fileno, extra={'clientip': connections[fileno].address[0], 'dirn': ''})
                     _poll.unregister(fileno)
                     del connections[fileno]
                 elif event & _events.EPOLLERR:
-                    print "Error connection: %d" % fileno
+                    deflogger.info("Error connection: %d" % fileno, extra={'clientip': connections[fileno].address[0], 'dirn': ''})
     finally:
         _poll.unregister(serversocket.fileno())
         _poll.close()

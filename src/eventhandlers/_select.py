@@ -69,6 +69,6 @@ class _select(object):
         for fd in errors:
             events[fd] = events.get(fd, 0) | self.ERROR
         return events.items()
-    
+
     def close(self):
-        self.close()
+        pass
