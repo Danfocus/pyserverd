@@ -92,19 +92,19 @@ AIM_MD5_STRING = "AOL Instant Messenger (SM)"
 
 MISMATCH_PASSWD = "http://www.aim.com/errors/MISMATCH_PASSWD.html?ccode=us&lang=en"
 
-SUPPORTED_SERVICES = {1:4, 2:1, 3:1, 4:1, 6:1, 8:1, 9:1, 10:1, 11:1, 12:1, 19:5, 21:2, 34:1, 36:1, 37:1}
+SUPPORTED_SERVICES = {1:4, 2:1, 3:1, 4:1, 8:1, 9:1, 10:1, 11:1, 12:1, 19:6, 21:2, 34:1, 36:1, 37:1}
 
-WELL_KNOWN_URL = {3: 'http://api.oscar.aol.com/lifestream/',
-                  4: 'http://o.aolcdn.com/lifestream/client/full',
-                  5: 'http://o.aolcdn.com/lifestream/client/me',
-                  7: 'http://o.aolcdn.com/lifestream_photos/photo/',
-                  8: 'http://photos.lifestream.aim.com/photo/upload?',
-                  9: 'http://api.oscar.aol.com/',
-                  10: 'http://lifestream.aim.com/settings',
-                  11: 'http://lifestream.aim.com/stream/',
-                  12: 'https://my.screenname.aol.com',
-                  13: 'http://abapi.abweb.aol.com/ABWebApi/',
-                  14: 'https://dbr.services.aol.com/'}
+WELL_KNOWN_URL = {3: 'http://api.icq.net/lifestream/',
+                  4: 'http://lifestream.icq.com/lifestream/client/full',
+                  5: 'http://lifestream.icq.com/lifestream/client/me',
+                  7: 'http://lifestream.icq.com/lifestream/photo/',
+                  8: 'http://lifestream.icq.com/photo/upload?',
+                  9: 'http://api.icq.net/',
+                  10: 'http://lifestream.icq.com/settings',
+                  11: 'http://lifestream.icq.com/stream/',
+                  15: 'http://lifestream.icq.com/',
+                  16: 'http://lifestream.icq.com/photo/lifestream/',
+                  17: 'http://files.mail.ru/cgi-bin/files/fajaxcall?ajax_call=1&func_name=cbChooseStorage&data=%5B%22%SIZE%%22%5D'}
 
 RATE_CLASSES = (
                 (1, 80, 2500, 2000, 1500, 800, 5855, 6000, 0, 0),
