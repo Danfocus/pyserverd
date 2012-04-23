@@ -67,7 +67,7 @@ def parse_snac(sn_sub, connection, str_):
                         deflogger.info("Auth - OK", extra={'clientip': connection.address[0], 'dirn': '<<--IN--'})
                         cookie = generate_cookie()
                         db.db_set_cookie(tlvc[1], struct.pack("!%ds" % len(cookie), cookie))
-                        tl = [tlv_c(142, 0, 'B'), tlv_c(1, tlvc[1]), tlv_c(5, cnf.bos_addr), tlv_c(6, cookie)]
+                        tl = [tlv_c(1, tlvc[1]), tlv_c(5, cnf.bos_addr), tlv_c(6, cookie)]
                         a = make_tlv(tl)
                         sn = snac(SN_TYP_REGISTRATION, SN_REG_LOGINxREPLY, 0, 0, a)
                         fl = flap(FLAP_FRAME_DATA, sn)
