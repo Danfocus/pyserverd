@@ -275,6 +275,9 @@ class queueHandler(Thread):
 
 if __name__ == '__main__':
     
+    deflogger.info("Server start", extra={'clientip': cnf.serv_addr, 'dirn': '^^^^^^^^^'})
+    debuglogger.info("Server start", extra={'clientip': cnf.serv_addr, 'dirn': '^^^^^^^^^'})
+    
     if hasattr(select, "epoll"):
         # Python 2.6+ on Linux
         _events = select
